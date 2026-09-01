@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                                  String   @id @default(cuid())
+  email                               String   @unique
+  password                            String
+  name                                String?
+  role                                Role     @default(USER)
+  smtpHost                            String?
+  smtpPort                            Int?
+  smtpUser                            String?
+  smtpPassword                        String?
+  smtpFrom                            String?
+  domain                              String?
+  commissioningLegalizationPercentage Float    @default(0.10)
+  inverterCostPercentage              Float    @default(0.15)
+  monitoringToolPercentage            Float    @default(0.10)
+  priceKW                             Float?
+  warrantySupportPercentage           Float    @default(0.05)
+  priceKWCurrency                     Currency @default(EUR)
+  installationServicesPercentage      Float    @default(0.30)
+  structureCostPercentage             Float    @default(0.05)
+}
+
+model Material {
+  id               String            @id @default(cuid())
+  name             String
+  area             Float             @default(0)
+  image            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  datasheetPdf     String?
+  hasBattery       Boolean?          @default(false)
+  panelApplication PanelApplication?
+  panelType        PanelType?
+  peakPower        Float?
+  type             MaterialType      @default(OTHER)
+}
+
+model Submission {
+  id                           String            @id @default(cuid())
+  address                      String
+  city                         String?
+  country                      String            @default("spain")
+  createdAt                    DateTime          @default(now())
+  updatedAt                    DateTime          @updatedAt
+  latitude                     Float?
+  longitude                    Float?
+  userName                     String?
+  userEmail                    String?
+  userPhone                    String?
+  hasUserInfo                  Boolean           @default(false)
+  userConsentGiven             Boolean?
+  origin                       String?
+  pathname                     String?
+  googleSolarData              Json?
+  annualProduction             Float?
+  dailyAverage                 Float?
+  efficiency                   Float?
+  sunHoursPerDay               Float?
+  totalCost                    Float?
+  costPerWatt                  Float?
+  systemSize                   Float?
+  panelCount                   Int?
+  totalRoofArea                Float?
+  suitableRoofArea             Float?
+  roofSuitability              Float?
+  paybackYears                 Int?
+  roi                          Float?
+  firstYearSavings             Float?
+  lifetimeSavings              Float?
+  currencyCode                 String?
+  monthlyElectricityBillAmount Float?
+  averageKwhConsumption        Float?
+  co2Reduction                 Float?
+  treesPlanted                 Int?
+  averagePricePerKWh           Float?
+  panelApplication             PanelApplication?
+  panelType                    PanelType?
+  baseInstallationCost         Float?
+  costBreakdownJson            Json?
+  ivaAmount                    Float?
+  priceKWUsed                  Float?
+  selectedInverterName         String?
+  selectedInverterPeakPower    Float?
+  selectedPanelName            String?
+  totalCostWithIva             Float?
+  orthophotoBase64             String?
+  orthophotoUrl                String?
+}
+
+model SystemSetting {
+  id                       String   @id @default(cuid())
+  panelComponentPercentage Float    @default(0.25)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  inverterCostPercentage   Float    @default(0.15)
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum MaterialType {
+  PANEL
+  INVERSOR
+  OTHER
+}
+
+enum PanelType {
+  NORMAL
+  BLACK
+}
+
+enum PanelApplication {
+  RESIDENCIAL
+  INDUSTRIAL
+}
+
+enum Currency {
+  EUR
+  COP
+  GTQ
+}

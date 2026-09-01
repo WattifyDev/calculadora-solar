@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      restart_policy:
+        condition: on-failure
+    networks:
+      - red_interna # <--- Cambio aquí
+
+  app:
+    image: mi-app-nextjs:latest
+    build: .
+    env_file:
+      - .env
+    environment:
+      - NEXT_TELEMETRY_DISABLED=1
+      - NODE_ENV=production
+    depends_on:
+      - db
+    networks:
+      - red_interna # <--- Cambio aquí
+      - wattify-net
+    deploy:
+      restart_policy:
+        condition: on-failure
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.calculadora.rule=Host(`calculadora-solar.wattify.es`)"
+        - "traefik.http.routers.calculadora.entrypoints=websecure"
+        - "traefik.http.routers.calculadora.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.calculadora.loadbalancer.server.port=3000"
+        - "traefik.docker.network=wattify-net"
+
+volumes:
+  postgres_data:
+
+networks:
+  red_interna: # <--- Red explícita, control total
+    driver: overlay
+    attachable: true
+  wattify-net:
+    external: true
