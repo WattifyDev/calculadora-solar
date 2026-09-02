@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
-
-
+import Test from "./test/page";
 
 export default function Page() {
-    redirect("/login")
+    return <Test />;
 }

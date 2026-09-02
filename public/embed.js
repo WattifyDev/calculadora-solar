@@ -61,7 +61,7 @@
   const containerId = 'solar-calc-' + Math.random().toString(36).substring(2, 9);
 
   const styles = `
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto:wght@300;400;500;700&display=swap');
 
     #${containerId} {
       all: initial;
@@ -89,9 +89,9 @@
       color: #063231 !important;
       border: none !important;
       border-radius: 100px !important;
-      font-family: 'Roboto', sans-serif !important;
+      font-family: 'Inter', 'Roboto', sans-serif !important;
       font-size: 16px !important;
-      font-weight: 700 !important;
+      font-weight: 800 !important;
       cursor: pointer !important;
       transition: all 0.2s ease !important;
       text-transform: uppercase !important;
@@ -113,7 +113,8 @@
       left: 0 !important;
       right: 0 !important;
       bottom: 0 !important;
-      background-color: rgba(0, 0, 0, 0.5) !important;
+      background-color: rgba(6, 50, 49, 0.6) !important;
+      backdrop-filter: blur(6px) !important;
       z-index: 999999999 !important;
       overflow-y: auto !important;
       padding: 20px !important;
@@ -131,25 +132,27 @@
 
     #${containerId} .solar-calc__dialog-close {
       position: absolute !important;
-      top: 20px !important;
-      right: 20px !important;
-      background: none !important;
-      border: none !important;
-      font-size: 24px !important;
-      color: #6b7280 !important;
+      top: 16px !important;
+      right: 18px !important;
+      background: #f1f5f9 !important;
+      border: 1px solid #e2e8f0 !important;
+      font-size: 20px !important;
+      color: #64748b !important;
       cursor: pointer !important;
-      padding: 8px !important;
+      width: 32px !important;
+      height: 32px !important;
       border-radius: 50% !important;
       line-height: 1 !important;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
       transition: all 0.2s ease !important;
+      z-index: 10 !important;
     }
 
     #${containerId} .solar-calc__dialog-close:hover {
-      background-color: rgba(0, 0, 0, 0.05) !important;
-      color: #111827 !important;
+      background-color: #e2e8f0 !important;
+      color: #0f172a !important;
     }
 
     #${containerId} .solar-calc__container {
@@ -178,19 +181,41 @@
       }
     }
 
+    #${containerId} .solar-calc__step {
+      display: none !important;
+    }
+
+    #${containerId} .solar-calc__step.active {
+      display: block !important;
+    }
+
     #${containerId} .solar-calc__header {
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
       margin-bottom: 16px !important;
       padding-bottom: 12px !important;
+      padding-right: 48px !important;
       border-bottom: 1px solid #f1f5f9 !important;
     }
 
+    #${containerId} .solar-calc__brand {
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+    }
+
+    #${containerId} .solar-calc__logo {
+      height: 28px !important;
+      width: auto !important;
+      object-fit: contain !important;
+    }
+
     #${containerId} .solar-calc__title {
-      font-size: 22px !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 20px !important;
       font-weight: 800 !important;
-      color: #0f172a !important;
+      color: #063231 !important;
       margin: 0 !important;
       letter-spacing: -0.02em !important;
       display: flex !important;
@@ -376,7 +401,7 @@
       box-shadow: none !important;
     }
 
-    /* Screen 2: Country Badge and Bill Slider */
+    /* Screen 2: Country Badge and Consumption in kWh */
     #${containerId} .solar-calc__country-card {
       display: flex !important;
       align-items: center !important;
@@ -385,7 +410,7 @@
       background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
       border: 1px solid #86efac !important;
       border-radius: 12px !important;
-      margin-bottom: 16px !important;
+      margin-bottom: 14px !important;
     }
 
     #${containerId} .solar-calc__country-info {
@@ -395,12 +420,12 @@
     }
 
     #${containerId} .solar-calc__country-flag {
-      font-size: 24px !important;
+      font-size: 26px !important;
       line-height: 1 !important;
     }
 
     #${containerId} .solar-calc__country-name {
-      font-size: 14px !important;
+      font-size: 15px !important;
       font-weight: 700 !important;
       color: #065f46 !important;
     }
@@ -413,38 +438,83 @@
       color: #CBFF54 !important;
       font-size: 12px !important;
       font-weight: 700 !important;
-      padding: 4px 10px !important;
+      padding: 5px 12px !important;
       border-radius: 20px !important;
     }
 
-    /* Interactive Bill Slider */
-    #${containerId} .solar-calc__slider-box {
+    /* Consumption kWh Box */
+    #${containerId} .solar-calc__consumption-box {
       background: #ffffff !important;
       border: 1.5px solid #e2e8f0 !important;
       border-radius: 14px !important;
       padding: 16px !important;
-      margin-bottom: 16px !important;
+      margin-bottom: 14px !important;
       box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important;
     }
 
-    #${containerId} .solar-calc__slider-header {
+    #${containerId} .solar-calc__consumption-header {
       display: flex !important;
       justify-content: space-between !important;
-      align-items: flex-end !important;
+      align-items: center !important;
+      margin-bottom: 10px !important;
+    }
+
+    #${containerId} .solar-calc__consumption-presets {
+      display: flex !important;
+      gap: 6px !important;
       margin-bottom: 12px !important;
     }
 
-    #${containerId} .solar-calc__slider-value-display {
-      font-size: 24px !important;
-      font-weight: 800 !important;
-      color: #0f172a !important;
-      letter-spacing: -0.02em !important;
+    #${containerId} .solar-calc__preset-btn {
+      flex: 1 !important;
+      padding: 6px 8px !important;
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      border: 1px solid #e2e8f0 !important;
+      background: #f8fafc !important;
+      border-radius: 6px !important;
+      color: #475569 !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+      text-align: center !important;
     }
 
-    #${containerId} .solar-calc__slider-kwh-equiv {
-      font-size: 12px !important;
+    #${containerId} .solar-calc__preset-btn:hover {
+      background: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    #${containerId} .solar-calc__preset-btn.active {
+      background: #064e3b !important;
+      color: #CBFF54 !important;
+      border-color: #064e3b !important;
+    }
+
+    #${containerId} .solar-calc__kwh-input-row {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      margin-bottom: 10px !important;
+    }
+
+    #${containerId} .solar-calc__kwh-input {
+      flex: 1 !important;
+      font-size: 22px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      border: 2px solid #22c55e !important;
+      border-radius: 10px !important;
+      padding: 8px 14px !important;
+      background: #f0fdf4 !important;
+      outline: none !important;
+      text-align: right !important;
+    }
+
+    #${containerId} .solar-calc__kwh-unit {
+      font-size: 14px !important;
+      font-weight: 700 !important;
       color: #64748b !important;
-      font-weight: 500 !important;
+      white-space: nowrap !important;
     }
 
     #${containerId} .solar-calc__range-input {
@@ -503,6 +573,7 @@
 
     /* Premium Satellite Scanner Animation */
     #${containerId} .solar-calc__scanner-modal {
+      display: none !important;
       position: absolute !important;
       top: 0 !important;
       left: 0 !important;
@@ -512,12 +583,15 @@
       backdrop-filter: blur(8px) !important;
       border-radius: 20px !important;
       z-index: 50 !important;
-      display: flex !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: center !important;
       padding: 32px !important;
       text-align: center !important;
+    }
+
+    #${containerId} .solar-calc__scanner-modal.visible {
+      display: flex !important;
     }
 
     #${containerId} .solar-calc__radar-box {
@@ -594,6 +668,140 @@
       color: #64748b !important;
       margin-top: 4px !important;
     }
+
+    /* Screen 3 (Results): Premium Wattify Aesthetic */
+    #${containerId} .solar-calc__summary {
+      background: #ffffff !important;
+    }
+
+    #${containerId} .solar-calc__summary-title {
+      font-size: 18px !important;
+      font-weight: 800 !important;
+      color: #063231 !important;
+      letter-spacing: -0.01em !important;
+      margin-bottom: 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+
+    #${containerId} .solar-calc__summary-grid {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+
+    @media (max-width: 640px) {
+      #${containerId} .solar-calc__summary-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+
+    #${containerId} .solar-calc__summary-item {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 12px !important;
+      padding: 14px 12px !important;
+      text-align: center !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #${containerId} .solar-calc__summary-item:hover {
+      border-color: #22c55e !important;
+      transform: translateY(-2px) !important;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.1) !important;
+    }
+
+    #${containerId} .solar-calc__summary-label {
+      font-size: 11px !important;
+      font-weight: 600 !important;
+      color: #64748b !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.04em !important;
+      margin-bottom: 6px !important;
+    }
+
+    #${containerId} .solar-calc__summary-value {
+      font-size: 20px !important;
+      font-weight: 800 !important;
+      color: #063231 !important;
+      letter-spacing: -0.02em !important;
+    }
+
+    #${containerId} .solar-calc__summary-average-price {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      background: #f0fdf4 !important;
+      border: 1px solid #86efac !important;
+      color: #065f46 !important;
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      padding: 6px 14px !important;
+      border-radius: 20px !important;
+      margin-top: 8px !important;
+      margin-bottom: 16px !important;
+    }
+
+    /* Screen 4 (Contact Form): Wattify Input Cards */
+    #${containerId} .solar-calc__personal-info {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 14px !important;
+      margin-bottom: 16px !important;
+    }
+
+    @media (max-width: 640px) {
+      #${containerId} .solar-calc__personal-info {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    #${containerId} .solar-calc__checkbox-container {
+      grid-column: 1 / -1 !important;
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 10px !important;
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 10px !important;
+      padding: 12px 14px !important;
+      margin-top: 4px !important;
+    }
+
+    #${containerId} .solar-calc__checkbox {
+      width: 18px !important;
+      height: 18px !important;
+      accent-color: #063231 !important;
+      cursor: pointer !important;
+      margin-top: 2px !important;
+      flex-shrink: 0 !important;
+    }
+
+    #${containerId} .solar-calc__checkbox-label {
+      font-size: 12px !important;
+      line-height: 1.4 !important;
+      color: #475569 !important;
+      cursor: pointer !important;
+    }
+
+    #${containerId} .solar-calc__back-button {
+      background: #f1f5f9 !important;
+      color: #334155 !important;
+      border: 1px solid #cbd5e1 !important;
+      font-weight: 600 !important;
+      padding: 12px 20px !important;
+      border-radius: 10px !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+      font-size: 14px !important;
+    }
+
+    #${containerId} .solar-calc__back-button:hover {
+      background: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
   `;
 
   const formHtml = `
@@ -607,9 +815,12 @@
           <button type="button" class="solar-calc__dialog-close" aria-label="Cerrar">×</button>
           
           <div class="solar-calc__header">
-            <h2 class="solar-calc__title">
-              <span>☀️</span> Calculadora Solar
-            </h2>
+            <div class="solar-calc__brand">
+              <img src="/wattifylogo.png" alt="Wattify" class="solar-calc__logo" onerror="this.style.display='none'">
+              <h2 class="solar-calc__title">
+                <span>☀️</span> Calculadora Solar
+              </h2>
+            </div>
             <div class="solar-calc__step-pills">
               <span id="pill1-${containerId}" class="solar-calc__step-pill active">1. Ubicación</span>
               <span id="pill2-${containerId}" class="solar-calc__step-pill">2. Consumo</span>
@@ -687,7 +898,7 @@
             </div>
           </div>
 
-          <!-- Screen 2: Bill/Consumption Interactive Slider & Technical Details -->
+          <!-- Screen 2: Consumption in kWh, Country Badge & Technical Details -->
           <div id="step1b-${containerId}" class="solar-calc__step">
             <form id="solarCalculatorForm-${containerId}">
               <!-- Auto-detected Country Badge with Flag -->
@@ -696,7 +907,7 @@
                   <span id="countryFlagBadge-${containerId}" class="solar-calc__country-flag">🇪🇸</span>
                   <div>
                     <div id="countryNameBadge-${containerId}" class="solar-calc__country-name">España detectada</div>
-                    <div style="font-size: 11px; color: #047857;">Tarifa y radiación solar ajustada localmente</div>
+                    <div style="font-size: 11px; color: #047857;">Tarifa y radiación solar calculadas para esta región</div>
                   </div>
                 </div>
                 <div class="solar-calc__country-currency-badge">
@@ -704,46 +915,63 @@
                 </div>
               </div>
 
-              <!-- Interactive Bill / Consumption Slider Box -->
-              <div class="solar-calc__slider-box">
-                <div class="solar-calc__slider-header">
-                  <div>
-                    <label class="solar-calc__label" for="billRange-${containerId}">
-                      Tu factura de luz mensual estimada
-                    </label>
-                    <div class="solar-calc__slider-kwh-equiv" id="kwhEquivText-${containerId}">
-                      Consumo estimado: ~375 kWh/mes
-                    </div>
-                  </div>
-                  <div class="solar-calc__slider-value-display" id="sliderValueDisplay-${containerId}">
-                    75 € / mes
-                  </div>
+              <!-- Interactive Consumption in kWh Box -->
+              <div class="solar-calc__consumption-box">
+                <div class="solar-calc__consumption-header">
+                  <label class="solar-calc__label" for="consumptionDisplayInput-${containerId}" style="margin: 0;">
+                    Consumo eléctrico mensual (kWh)
+                  </label>
+                  <span style="font-size: 11px; color: #64748b;">Máx. 350.000 kWh/mes</span>
                 </div>
 
+                <!-- Presets: Residencial vs Negocio vs Industrial -->
+                <div class="solar-calc__consumption-presets">
+                  <button type="button" class="solar-calc__preset-btn active" data-kwh="350">Hogar (350 kWh)</button>
+                  <button type="button" class="solar-calc__preset-btn" data-kwh="800">Grande (800 kWh)</button>
+                  <button type="button" class="solar-calc__preset-btn" data-kwh="3500">Comercio (3.500 kWh)</button>
+                  <button type="button" class="solar-calc__preset-btn" data-kwh="25000">Industria (25.000 kWh)</button>
+                </div>
+
+                <!-- Direct Numeric Input -->
+                <div class="solar-calc__kwh-input-row">
+                  <input 
+                    type="number" 
+                    id="consumptionDisplayInput-${containerId}" 
+                    class="solar-calc__kwh-input" 
+                    min="10" 
+                    max="350000" 
+                    step="10" 
+                    value="350"
+                  >
+                  <span class="solar-calc__kwh-unit">kWh / mes</span>
+                </div>
+
+                <!-- Range Slider up to 350,000 kWh -->
                 <input 
                   type="range" 
-                  id="billRange-${containerId}" 
+                  id="kwhRangeSlider-${containerId}" 
                   class="solar-calc__range-input" 
-                  min="20" 
-                  max="400" 
-                  step="5" 
-                  value="75"
+                  min="50" 
+                  max="5000" 
+                  step="25" 
+                  value="350"
                 >
 
                 <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 500;">
-                  <span id="sliderMinLabel-${containerId}">20 €</span>
-                  <span>Desliza para ajustar tu gasto mensual</span>
-                  <span id="sliderMaxLabel-${containerId}">400+ €</span>
+                  <span>50 kWh</span>
+                  <span id="estimatedBillHint-${containerId}" style="color: #047857; font-weight: 600;">~70 € / mes aprox.</span>
+                  <span>5.000+ kWh (escribe para más)</span>
                 </div>
               </div>
 
-              <input type="hidden" name="consumption" id="consumption-${containerId}" value="375">
+              <!-- Hidden consumption input for API -->
+              <input type="hidden" name="consumption" id="consumption-${containerId}" value="350">
 
-              <!-- Optional Manual Price & Hidden Currency -->
+              <!-- Tarifa eléctrica de referencia (editable opcional) -->
               <div style="margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                   <label class="solar-calc__label" for="averagePricePerKWh-${containerId}" style="margin: 0;">
-                    Coste de electricidad por kWh
+                    Tarifa de electricidad por kWh
                   </label>
                   <select name="averagePriceCurrency" id="averagePriceCurrency-${containerId}" class="solar-calc__input" style="width: auto !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; border-radius: 6px !important;">
                     <option value="EUR">🇪🇸 EUR (€)</option>
@@ -756,9 +984,9 @@
                   name="averagePricePerKWh" 
                   id="averagePricePerKWh-${containerId}"
                   class="solar-calc__input" 
-                  min="0"
-                  step="any"
-                  placeholder="0.20"
+                  min="0" 
+                  step="any" 
+                  placeholder="0.20" 
                   style="margin-top: 4px !important;"
                 >
               </div>
@@ -796,7 +1024,7 @@
 
               <div class="solar-calc__action-bar">
                 <button type="button" id="backToStep1a-${containerId}" class="solar-calc__button solar-calc__button--back">
-                  ← Modificar Tejado
+                  ← Modificar Ubicación
                 </button>
                 <button type="button" id="calculateButton-${containerId}" class="solar-calc__button solar-calc__button--primary">
                   Calcular Potencial Solar ☀️
@@ -852,63 +1080,78 @@
                 </div>
               </div>
             </div>
-            <button type="button" id="backToForm-${containerId}" class="solar-calc__back-button">
-              ← Volver
-            </button>
-            <button type="button" id="continueToContact-${containerId}" class="solar-calc__button" style="display: none;">
-              Continuar - Solicitar Informe Completo
-            </button>
+            <div class="solar-calc__action-bar">
+              <button type="button" id="backToForm-${containerId}" class="solar-calc__button solar-calc__button--back">
+                ← Volver al Consumo
+              </button>
+              <button type="button" id="continueToContact-${containerId}" class="solar-calc__button solar-calc__button--primary" style="display: none;">
+                Solicitar Informe y Propuesta Oficial →
+              </button>
+            </div>
           </div>
 
           <!-- Step 3: Personal Info -->
           <div id="step3-${containerId}" class="solar-calc__step">
+            <div style="margin-bottom: 14px;">
+              <h3 style="font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 700; color: #063231; margin-bottom: 4px;">
+                📄 ¿A dónde te enviamos el estudio solar completo?
+              </h3>
+              <p style="font-size: 12px; color: #64748b;">
+                Generaremos tu propuesta técnica detallada con desglose de amortización e impacto ambiental en PDF.
+              </p>
+            </div>
+
             <form id="contactForm-${containerId}">
               <div class="solar-calc__personal-info">
                 <div>
                   <label class="solar-calc__label" for="name-${containerId}">
-                    Nombre
+                    Nombre *
                   </label>
                   <input 
                     type="text" 
                     name="name" 
                     id="name-${containerId}"
                     class="solar-calc__input" 
+                    placeholder="Ej. Juan"
                     required
                   >
                 </div>
                 <div>
                   <label class="solar-calc__label" for="surnames-${containerId}">
-                    Apellidos
+                    Apellidos *
                   </label>
                   <input 
                     type="text" 
                     name="surnames" 
                     id="surnames-${containerId}"
                     class="solar-calc__input" 
+                    placeholder="Ej. Pérez García"
                     required
                   >
                 </div>
                 <div>
                   <label class="solar-calc__label" for="phone-${containerId}">
-                    Teléfono
+                    Teléfono *
                   </label>
                   <input 
                     type="tel" 
                     name="phone" 
                     id="phone-${containerId}"
                     class="solar-calc__input" 
+                    placeholder="Ej. 600 000 000"
                     required
                   >
                 </div>
                 <div>
                   <label class="solar-calc__label" for="email-${containerId}">
-                    Email
+                    Correo Electrónico *
                   </label>
                   <input 
                     type="email" 
                     name="email" 
                     id="email-${containerId}"
                     class="solar-calc__input" 
+                    placeholder="tu@email.com"
                     required
                   >
                 </div>
@@ -922,18 +1165,20 @@
                     required
                   >
                   <label class="solar-calc__checkbox-label" for="consent-${containerId}" id="consentLabel-${containerId}">
-                    Consiento que Renovables del Henares SL guarde y use mis datos para gestionar mi solicitud de información sobre instalaciones solares, así como para el envío de comunicaciones relacionadas con sus servicios.
+                    Consiento que Wattify guarde y use mis datos para gestionar mi estudio solar personalizado y enviarme la propuesta técnica sin compromiso.
                   </label>
                 </div>
               </div>
 
-              <button type="button" id="backToSummary-${containerId}" class="solar-calc__back-button">
-                ← Volver al Resumen
-              </button>
-              <button type="submit" id="submitContact-${containerId}" class="solar-calc__button">
-                <span class="solar-calc__button-spinner"></span>
-                <span class="solar-calc__button-text">Enviar Datos y Recibir Informe por Email</span>
-              </button>
+              <div class="solar-calc__action-bar">
+                <button type="button" id="backToSummary-${containerId}" class="solar-calc__button solar-calc__button--back">
+                  ← Volver al Resumen
+                </button>
+                <button type="submit" id="submitContact-${containerId}" class="solar-calc__button solar-calc__button--primary">
+                  <span class="solar-calc__button-spinner"></span>
+                  <span class="solar-calc__button-text">Recibir Propuesta Solar por Email 📩</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -983,10 +1228,16 @@
   const closeButton = shadow.querySelector('.solar-calc__dialog-close');
   let autocomplete = null;
   let map = null;
+  let showStep = null;
 
   const openDialog = async () => {
     dialog.setAttribute('open', '');
     document.body.style.overflow = 'hidden';
+
+    // Always reset to Step 1a (Location & Roof Map)
+    if (typeof showStep === 'function') {
+      showStep('step1a');
+    }
 
     // Initialize or reinitialize Google Maps and autocomplete when dialog opens
     if (!window.google || !window.google.maps) {
@@ -1364,14 +1615,11 @@
     flag: '🇪🇸',
     currency: 'EUR',
     symbol: '€',
-    priceKwh: 0.20,
-    minBill: 20,
-    maxBill: 400,
-    defaultBill: 75
+    priceKwh: 0.20
   };
 
   // Step navigation functions
-  function showStep(stepName) {
+  showStep = function(stepName) {
     shadow.querySelectorAll('.solar-calc__step').forEach(step => {
       step.classList.remove('active');
     });
@@ -1401,7 +1649,7 @@
     }
   }
 
-  // Update country visual badge & slider parameters
+  // Update country visual badge & parameters
   function applyCountryVisuals(countryData) {
     currentCountryInfo = { ...currentCountryInfo, ...countryData };
     
@@ -1410,9 +1658,6 @@
     const currencyBadge = shadow.querySelector(`#countryCurrencyBadge-${containerId}`);
     const currencySelect = shadow.querySelector(`#averagePriceCurrency-${containerId}`);
     const priceInput = shadow.querySelector(`#averagePricePerKWh-${containerId}`);
-    const billSlider = shadow.querySelector(`#billRange-${containerId}`);
-    const sliderMin = shadow.querySelector(`#sliderMinLabel-${containerId}`);
-    const sliderMax = shadow.querySelector(`#sliderMaxLabel-${containerId}`);
 
     if (flagBadge) flagBadge.textContent = currentCountryInfo.flag;
     if (nameBadge) nameBadge.textContent = `${currentCountryInfo.countryName} detectada`;
@@ -1421,44 +1666,73 @@
     if (currencySelect) currencySelect.value = currentCountryInfo.currency;
     if (priceInput) priceInput.placeholder = String(currentCountryInfo.priceKwh);
 
-    if (billSlider && sliderMin && sliderMax) {
-      billSlider.min = currentCountryInfo.minBill;
-      billSlider.max = currentCountryInfo.maxBill;
-      billSlider.value = currentCountryInfo.defaultBill;
-      sliderMin.textContent = `${currentCountryInfo.minBill} ${currentCountryInfo.symbol}`;
-      sliderMax.textContent = `${currentCountryInfo.maxBill}+ ${currentCountryInfo.symbol}`;
-      updateSliderDisplay(currentCountryInfo.defaultBill);
-    }
-  }
-
-  // Update bill slider value display & consumption equivalent
-  function updateSliderDisplay(val) {
-    const sliderDisplay = shadow.querySelector(`#sliderValueDisplay-${containerId}`);
-    const kwhEquiv = shadow.querySelector(`#kwhEquivText-${containerId}`);
+    // Update bill hint for current consumption
     const consumptionInput = shadow.querySelector(`#consumption-${containerId}`);
-
-    const numericVal = parseFloat(val);
-    if (sliderDisplay) {
-      sliderDisplay.textContent = `${Math.round(numericVal).toLocaleString('es-ES')} ${currentCountryInfo.symbol} / mes`;
-    }
-
-    // Estimate consumption (kWh = bill / pricePerKWh)
-    const estimatedKWh = Math.round(numericVal / (currentCountryInfo.priceKwh || 0.20));
-    if (kwhEquiv) {
-      kwhEquiv.textContent = `Consumo estimado: ~${estimatedKWh.toLocaleString('es-ES')} kWh/mes`;
-    }
-    if (consumptionInput) {
-      consumptionInput.value = estimatedKWh;
-    }
+    const currentVal = consumptionInput ? parseFloat(consumptionInput.value) || 350 : 350;
+    updateConsumptionValue(currentVal);
   }
 
-  // Slider event listener
-  const billRangeInput = shadow.querySelector(`#billRange-${containerId}`);
-  if (billRangeInput) {
-    billRangeInput.addEventListener('input', (e) => {
-      updateSliderDisplay(e.target.value);
+  // Update consumption value across all inputs (direct numeric, range slider and hidden input)
+  function updateConsumptionValue(kwhVal) {
+    let numericVal = Math.round(parseFloat(kwhVal) || 0);
+    if (numericVal < 10) numericVal = 10;
+    if (numericVal > 350000) numericVal = 350000;
+
+    const numInput = shadow.querySelector(`#consumptionDisplayInput-${containerId}`);
+    const rangeSlider = shadow.querySelector(`#kwhRangeSlider-${containerId}`);
+    const hiddenInput = shadow.querySelector(`#consumption-${containerId}`);
+    const billHint = shadow.querySelector(`#estimatedBillHint-${containerId}`);
+
+    if (numInput && document.activeElement !== numInput) {
+      numInput.value = numericVal;
+    }
+    if (rangeSlider && numericVal <= 5000) {
+      rangeSlider.value = numericVal;
+    }
+    if (hiddenInput) {
+      hiddenInput.value = numericVal;
+    }
+
+    // Update estimated bill hint based on local tariff
+    if (billHint) {
+      const approxBill = Math.round(numericVal * (currentCountryInfo.priceKwh || 0.20));
+      billHint.textContent = `~${approxBill.toLocaleString('es-ES')} ${currentCountryInfo.symbol} / mes aprox.`;
+    }
+
+    // Highlight matching preset button if any
+    shadow.querySelectorAll('.solar-calc__preset-btn').forEach(btn => {
+      if (parseInt(btn.dataset.kwh, 10) === numericVal) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
     });
   }
+
+  // Setup direct numeric input listener
+  const directKwhInput = shadow.querySelector(`#consumptionDisplayInput-${containerId}`);
+  if (directKwhInput) {
+    directKwhInput.addEventListener('input', (e) => {
+      updateConsumptionValue(e.target.value);
+    });
+  }
+
+  // Setup range slider listener
+  const kwhRangeSlider = shadow.querySelector(`#kwhRangeSlider-${containerId}`);
+  if (kwhRangeSlider) {
+    kwhRangeSlider.addEventListener('input', (e) => {
+      updateConsumptionValue(e.target.value);
+    });
+  }
+
+  // Setup preset buttons (Hogar 350, Grande 800, Comercio 3500, Industria 25000)
+  const presetBtns = shadow.querySelectorAll('.solar-calc__preset-btn');
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const kwh = parseInt(btn.dataset.kwh, 10);
+      updateConsumptionValue(kwh);
+    });
+  });
 
   // Setup Capital Buttons (Madrid, Bogotá, Ciudad de Guatemala)
   const capitalBtns = shadow.querySelectorAll('.solar-calc__capital-btn');
@@ -1503,10 +1777,7 @@
         flag: flag,
         currency: currency,
         symbol: currency === 'COP' ? '$' : (currency === 'GTQ' ? 'Q' : '€'),
-        priceKwh: currency === 'COP' ? 986 : (currency === 'GTQ' ? 1.60 : 0.20),
-        minBill: currency === 'COP' ? 80000 : (currency === 'GTQ' ? 150 : 20),
-        maxBill: currency === 'COP' ? 2000000 : (currency === 'GTQ' ? 3500 : 400),
-        defaultBill: currency === 'COP' ? 350000 : (currency === 'GTQ' ? 600 : 75)
+        priceKwh: currency === 'COP' ? 986 : (currency === 'GTQ' ? 1.60 : 0.20)
       };
       applyCountryVisuals(params);
     });
@@ -1529,43 +1800,49 @@
         return;
       }
 
-      // Auto-detect country if address has hints
+      // Auto-detect country based on address text or coordinates
       const address = (locInput && locInput.value) ? locInput.value.toLowerCase() : '';
-      if (address.includes('guatemala') || address.includes(', gt')) {
+      const latVal = latInput && latInput.value ? parseFloat(latInput.value) : null;
+      const lngVal = lngInput && lngInput.value ? parseFloat(lngInput.value) : null;
+
+      // Coordinate boundary heuristics:
+      // Guatemala: Lat ~13 to ~18, Lng ~ -92.5 to -88
+      // Colombia: Lat ~ -4.5 to ~13.5, Lng ~ -79 to -66.5
+      // Spain: Lat ~27 to ~44, Lng ~ -18 to ~5
+      let detectedCountry = 'Spain';
+
+      if (address.includes('guatemala') || address.includes(', gt') || (latVal && latVal >= 13 && latVal <= 18.5 && lngVal && lngVal <= -88 && lngVal >= -93)) {
+        detectedCountry = 'Guatemala';
+      } else if (address.includes('colombia') || address.includes('bogot') || address.includes('medell') || address.includes('cali') || address.includes('pereira') || address.includes(', co') || (latVal && latVal >= -4.5 && latVal <= 13.5 && lngVal && lngVal <= -66 && lngVal >= -80)) {
+        detectedCountry = 'Colombia';
+      }
+
+      if (detectedCountry === 'Guatemala') {
         applyCountryVisuals({
           country: 'Guatemala',
           countryName: 'Guatemala',
           flag: '🇬🇹',
           currency: 'GTQ',
           symbol: 'Q',
-          priceKwh: 1.60,
-          minBill: 150,
-          maxBill: 3500,
-          defaultBill: 600
+          priceKwh: 1.60
         });
-      } else if (address.includes('colombia') || address.includes('bogot') || address.includes(', co')) {
+      } else if (detectedCountry === 'Colombia') {
         applyCountryVisuals({
           country: 'Colombia',
           countryName: 'Colombia',
           flag: '🇨🇴',
           currency: 'COP',
           symbol: '$',
-          priceKwh: 986,
-          minBill: 80000,
-          maxBill: 2000000,
-          defaultBill: 350000
+          priceKwh: 986
         });
-      } else if (address.includes('españa') || address.includes('madrid') || address.includes(', es')) {
+      } else {
         applyCountryVisuals({
           country: 'Spain',
           countryName: 'España',
           flag: '🇪🇸',
           currency: 'EUR',
           symbol: '€',
-          priceKwh: 0.20,
-          minBill: 20,
-          maxBill: 400,
-          defaultBill: 75
+          priceKwh: 0.20
         });
       }
 
@@ -1786,7 +2063,7 @@
     const scannerSub = shadow.querySelector(`#scannerSubText-${containerId}`);
     const scannerProgress = shadow.querySelector(`#scannerProgressBar-${containerId}`);
 
-    if (scannerModal) scannerModal.style.display = 'flex';
+    if (scannerModal) scannerModal.classList.add('visible');
     if (scannerProgress) scannerProgress.style.width = '25%';
 
     try {
@@ -1825,7 +2102,7 @@
       }
 
       setTimeout(() => {
-        if (scannerModal) scannerModal.style.display = 'none';
+        if (scannerModal) scannerModal.classList.remove('visible');
         showStep('step2');
 
         shadow.getElementById(`summaryLoading-${containerId}`).style.display = 'none';
@@ -1837,7 +2114,7 @@
 
     } catch (error) {
       console.error('Error in calculate:', error);
-      if (scannerModal) scannerModal.style.display = 'none';
+      if (scannerModal) scannerModal.classList.remove('visible');
       alert(error.message || 'Error al calcular los datos solares. Por favor, revisa la ubicación.');
     }
   });
@@ -1998,11 +2275,20 @@
       const contactData = new FormData(contactForm);
       const formData = new FormData(form);
 
+      const locationInput = shadow.getElementById(`location-${containerId}`);
+      const latitudeInput = shadow.getElementById(`latitude-${containerId}`);
+      const longitudeInput = shadow.getElementById(`longitude-${containerId}`);
+      const polygonInput = shadow.getElementById(`polygonCoordinates-${containerId}`);
+
       const data = {
         ...Object.fromEntries(formData),
         ...Object.fromEntries(contactData),
+        location: locationInput && locationInput.value ? locationInput.value : undefined,
+        latitude: latitudeInput && latitudeInput.value ? latitudeInput.value : undefined,
+        longitude: longitudeInput && longitudeInput.value ? longitudeInput.value : undefined,
+        polygonCoordinates: polygonInput && polygonInput.value ? polygonInput.value : undefined,
         averagePricePerKWh: averagePriceInput && averagePriceInput.value ? averagePriceInput.value : undefined,
-        averagePriceCurrency: averagePriceCurrencyInput && averagePriceCurrencyInput.value ? averagePriceCurrencyInput.value : 'EUR',
+        averagePriceCurrency: averagePriceCurrencyInput && averagePriceCurrencyInput.value ? averagePriceCurrencyInput.value : currentCountryInfo.currency,
         // panelApplication and panelType are already in formData from the main form
         origin: window.location.origin,
         pathname: window.location.pathname,

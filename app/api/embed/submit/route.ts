@@ -25,9 +25,11 @@ import {
     type FinancialConstants,
     calculateSpanishIncentive,
     DEFAULT_FINANCIAL_CONSTANTS_CO,
-    getColombianFinancialConstants
+    DEFAULT_FINANCIAL_CONSTANTS_GT,
+    getColombianFinancialConstants,
+    getGuatemalanFinancialConstants
 } from '@/lib/solar-financial-calculations';
-import { getIvaRate, convertEurToCop } from '@/lib/currency';
+import { getIvaRate, convertEurToCop, convertEurToGtq } from '@/lib/currency';
 
 //Example response from google maps api:
 // Received submission (data before saving): {
@@ -177,14 +179,15 @@ function calculatePolygonArea(coordinates: Array<{ lat: number; lng: number }>):
 const googleMapsClient = new Client({});
 
 // Helper to robustly parse average price per kWh (supports comma/dot, string/number, fallback to default based on currency)
-function parseAveragePricePerKWh(input: unknown, currency: 'EUR' | 'COP' = 'EUR'): number {
+function parseAveragePricePerKWh(input: unknown, currency: 'EUR' | 'COP' | 'GTQ' = 'EUR'): number {
     if (typeof input === 'number' && input > 0) return input;
     if (typeof input === 'string') {
         const normalized = input.replace(',', '.').replace(/\s/g, '');
         const value = parseFloat(normalized);
         if (!isNaN(value) && value > 0) return value;
     }
-    return currency === 'COP' ? 986 : 0.20; // Colombia rate: 986 COP/kWh (equivalent to 0.21 EUR)
+    if (currency === 'GTQ') return 1.60; // Guatemala rate: 1.60 GTQ/kWh
+    return currency === 'COP' ? 986 : 0.20; // Colombia rate: 986 COP/kWh
 }
 
 const DEFAULT_SYSTEM_SETTINGS = {
@@ -212,8 +215,8 @@ export async function POST(request: Request) {
         const origin = headersList.get('origin');
         const apiKey = headersList.get('x-api-key');
         let city: string | null = null;
-        let country: 'spain' | 'colombia' = 'spain';
-        let enforcedCurrency: 'EUR' | 'COP' = 'EUR';
+        let country: 'spain' | 'colombia' | 'guatemala' = 'spain';
+        let enforcedCurrency: 'EUR' | 'COP' | 'GTQ' = 'EUR';
 
         // Get API keys from environment
         const googleSolarApiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -370,8 +373,8 @@ export async function POST(request: Request) {
         }
 
         // Determine final currency - respect user choice if provided, otherwise default to EUR
-        let finalCurrency: 'EUR' | 'COP' = 'EUR';
-        if (data.averagePriceCurrency && (data.averagePriceCurrency === 'EUR' || data.averagePriceCurrency === 'COP')) {
+        let finalCurrency: 'EUR' | 'COP' | 'GTQ' = 'EUR';
+        if (data.averagePriceCurrency && (data.averagePriceCurrency === 'EUR' || data.averagePriceCurrency === 'COP' || data.averagePriceCurrency === 'GTQ')) {
             finalCurrency = data.averagePriceCurrency;
             console.log(`[SUBMIT] Using user-selected currency: ${finalCurrency}`);
         } else if (userDefinedCurrency) {
@@ -381,15 +384,24 @@ export async function POST(request: Request) {
             console.log(`[SUBMIT] Using default currency: ${finalCurrency}`);
         }
 
-        let FINANCIAL_CONSTANTS = finalCurrency === 'COP' ? DEFAULT_FINANCIAL_CONSTANTS_CO : DEFAULT_FINANCIAL_CONSTANTS_ES;
+        let FINANCIAL_CONSTANTS = finalCurrency === 'COP' 
+            ? DEFAULT_FINANCIAL_CONSTANTS_CO 
+            : finalCurrency === 'GTQ'
+            ? DEFAULT_FINANCIAL_CONSTANTS_GT
+            : DEFAULT_FINANCIAL_CONSTANTS_ES;
 
-        // Use dynamic Colombian constants if final currency is COP
+        // Use dynamic Colombian or Guatemalan constants if needed
         if (finalCurrency === 'COP') {
             try {
                 FINANCIAL_CONSTANTS = await getColombianFinancialConstants();
             } catch (error) {
                 console.error('[SUBMIT] Error getting dynamic Colombian constants:', error);
-                // Fallback to static constants already set above
+            }
+        } else if (finalCurrency === 'GTQ') {
+            try {
+                FINANCIAL_CONSTANTS = await getGuatemalanFinancialConstants();
+            } catch (error) {
+                console.error('[SUBMIT] Error getting dynamic Guatemalan constants:', error);
             }
         }
 
@@ -505,12 +517,41 @@ export async function POST(request: Request) {
                     component.short_name === 'CO'
                 )
             );
+            const isInGuatemala = geocodeResult.data.results.some(result =>
+                result.address_components.some(component =>
+                    component.types.includes(AddressType.country) &&
+                    component.short_name === 'GT'
+                )
+            );
 
-            if (!isInSpain && !isInColombia) {
+            if (!isInSpain && !isInColombia && !isInGuatemala) {
                 return NextResponse.json(
-                    { success: false, message: 'La ubicación debe estar en España o Colombia' },
+                    { success: false, message: 'La ubicación debe estar en España, Colombia o Guatemala' },
                     { status: 400, headers: corsHeaders(origin || '') }
                 );
+            }
+
+            if (isInGuatemala) {
+                country = 'guatemala';
+                enforcedCurrency = 'GTQ';
+                if (!data.averagePriceCurrency && !userDefinedCurrency) {
+                    finalCurrency = 'GTQ';
+                    FINANCIAL_CONSTANTS = DEFAULT_FINANCIAL_CONSTANTS_GT;
+                }
+            } else if (isInColombia) {
+                country = 'colombia';
+                enforcedCurrency = 'COP';
+                if (!data.averagePriceCurrency && !userDefinedCurrency) {
+                    finalCurrency = 'COP';
+                    FINANCIAL_CONSTANTS = DEFAULT_FINANCIAL_CONSTANTS_CO;
+                }
+            } else {
+                country = 'spain';
+                enforcedCurrency = 'EUR';
+                if (!data.averagePriceCurrency && !userDefinedCurrency) {
+                    finalCurrency = 'EUR';
+                    FINANCIAL_CONSTANTS = DEFAULT_FINANCIAL_CONSTANTS_ES;
+                }
             }
 
             data.location = geocodeResult.data.results[0].formatted_address;
@@ -839,18 +880,25 @@ export async function POST(request: Request) {
             console.log('Could not retrieve Google Solar API data or solar potential was missing.');
         }
 
-        // --- COLOMBIA (PVGIS) LOGIC ---
-        if (country === 'colombia') {
-            // Update effectivePriceKW for Colombia only if user hasn't defined their own price OR currencies don't match
-            if ((!userDefinedCurrency || userDefinedCurrency !== finalCurrency) && finalCurrency === 'COP') {
+        // --- COLOMBIA & GUATEMALA (PVGIS) LOGIC ---
+        if (country === 'colombia' || country === 'guatemala') {
+            const isGuatemala = country === 'guatemala';
+            const targetCurrency = isGuatemala ? 'GTQ' : 'COP';
+
+            // Update effectivePriceKW only if user hasn't defined their own price OR currencies don't match
+            if ((!userDefinedCurrency || userDefinedCurrency !== finalCurrency) && finalCurrency === targetCurrency) {
                 try {
-                    const colombianConstants = await getColombianFinancialConstants();
-                    effectivePriceKW = colombianConstants.installationCostPerKw;
-                    console.log(`[SUBMIT] Using COP price for Colombia: ${effectivePriceKW} COP/kW`);
+                    const countryConstants = isGuatemala
+                        ? await getGuatemalanFinancialConstants()
+                        : await getColombianFinancialConstants();
+                    effectivePriceKW = countryConstants.installationCostPerKw;
+                    console.log(`[SUBMIT] Using ${targetCurrency} price for ${country}: ${effectivePriceKW} ${targetCurrency}/kW`);
                 } catch (error) {
-                    console.error('[SUBMIT] Error getting dynamic Colombian constants for effectivePriceKW:', error);
-                    // Use fallback Colombian price if dynamic fetch fails
-                    effectivePriceKW = DEFAULT_FINANCIAL_CONSTANTS_CO.installationCostPerKw;
+                    console.error(`[SUBMIT] Error getting dynamic ${country} constants for effectivePriceKW:`, error);
+                    // Use fallback price if dynamic fetch fails
+                    effectivePriceKW = isGuatemala
+                        ? DEFAULT_FINANCIAL_CONSTANTS_GT.installationCostPerKw
+                        : DEFAULT_FINANCIAL_CONSTANTS_CO.installationCostPerKw;
                 }
             }
 
@@ -878,11 +926,11 @@ export async function POST(request: Request) {
 
                         // Use consumption-based or area-based estimate, whichever is smaller (more realistic)
                         const annualConsumption = consumptionValue * 12;
-                        // Colombia produces ~1300-1400 kWh/kWp/year (using conservative 1300 for safety margin)
+                        // Produces ~1300-1400 kWh/kWp/year
                         const consumptionBasedSize = Math.round((annualConsumption / 1300) * 10) / 10;
 
                         peakpower = Math.max(1, Math.min(estimatedSystemSizeFromArea, consumptionBasedSize));
-                        console.log(`[SUBMIT] Colombia system size - Area-based: ${estimatedSystemSizeFromArea}kWp, Consumption-based: ${consumptionBasedSize}kWp, Final: ${peakpower}kWp`);
+                        console.log(`[SUBMIT] ${country} system size - Area-based: ${estimatedSystemSizeFromArea}kWp, Consumption-based: ${consumptionBasedSize}kWp, Final: ${peakpower}kWp`);
                     }
                 } catch (e) {
                     console.warn('[SUBMIT] Could not parse polygon coordinates:', e);
@@ -892,9 +940,8 @@ export async function POST(request: Request) {
             // Fallback: use consumption-based calculation
             if (peakpower === 1) {
                 const annualConsumption = consumptionValue * 12;
-                // Colombia produces ~1300-1400 kWh/kWp/year (using conservative 1300 for safety margin)
                 peakpower = Math.max(1, Math.round((annualConsumption / 1300) * 10) / 10);
-                console.log(`[SUBMIT] Colombia system size (consumption-based): ${peakpower}kWp`);
+                console.log(`[SUBMIT] ${country} system size (consumption-based): ${peakpower}kWp`);
             }
 
             // --- BEGIN: Panel Selection and Final System Size Calculation for Colombia ---
@@ -1004,8 +1051,8 @@ export async function POST(request: Request) {
             const co2Reduction = annualProduction * 0.0005;
             const treesPlanted = Math.round(annualProduction * 0.02);
 
-            // Calculate annual savings for Colombia
-            const averagePrice = parseAveragePricePerKWh(data.averagePricePerKWh, 'COP');
+            // Calculate annual savings
+            const averagePrice = parseAveragePricePerKWh(data.averagePricePerKWh, targetCurrency);
             const annualConsumption = consumptionValue * 12; // Monthly to annual consumption
             const energyOffsetBySolar = Math.min(annualProduction, annualConsumption); // Can't offset more than you consume
             const annualSavings = energyOffsetBySolar * averagePrice; // Savings = offset energy * price per kWh
@@ -1017,9 +1064,9 @@ export async function POST(request: Request) {
             const systemLifeYears = 25;
             const totalLifetimeSavings = annualSavings * systemLifeYears;
 
-            // --- BEGIN: Inverter Selection for Colombia ---
-            let selectedInverterNameColombia: string | null = null;
-            let selectedInverterPeakPowerColombia: number | null = null;
+            // --- BEGIN: Inverter Selection ---
+            let selectedInverterNameCountry: string | null = null;
+            let selectedInverterPeakPowerCountry: number | null = null;
 
             // Select inverter based on system size
             if (systemSize > 0) {
@@ -1056,18 +1103,18 @@ export async function POST(request: Request) {
                         }
 
                         if (closestInverter) {
-                            selectedInverterNameColombia = closestInverter.name;
-                            selectedInverterPeakPowerColombia = closestInverter.peakPower;
-                            console.log(`[SUBMIT] Colombia - Selected inverter: ${selectedInverterNameColombia} (${selectedInverterPeakPowerColombia}kW) for system size: ${systemSize}kW`);
+                            selectedInverterNameCountry = closestInverter.name;
+                            selectedInverterPeakPowerCountry = closestInverter.peakPower;
+                            console.log(`[SUBMIT] ${country} - Selected inverter: ${selectedInverterNameCountry} (${selectedInverterPeakPowerCountry}kW) for system size: ${systemSize}kW`);
                         }
                     }
                 } catch (invError) {
-                    console.error('[SUBMIT] Colombia - Error fetching inverters:', invError);
+                    console.error(`[SUBMIT] ${country} - Error fetching inverters:`, invError);
                 }
             }
-            // --- END: Panel and Inverter Selection for Colombia ---
+            // --- END: Panel and Inverter Selection ---
 
-            console.log(`[SUBMIT] Colombia financial calculations:`, {
+            console.log(`[SUBMIT] ${country} financial calculations:`, {
                 consumptionValue,
                 annualConsumption,
                 annualProduction,
@@ -1102,7 +1149,7 @@ export async function POST(request: Request) {
                 const updatedPaybackYears = totalCost > 0 && updatedAnnualSavings > 0 ? totalCost / updatedAnnualSavings : paybackYears;
                 const updatedTotalLifetimeSavings = updatedAnnualSavings * systemLifeYears;
 
-                console.log(`[SUBMIT] Colombia - Updated financial calculations:`, {
+                console.log(`[SUBMIT] ${country} - Updated financial calculations:`, {
                     originalTotalCost: systemSize * effectivePriceKW,
                     updatedTotalCost: totalCost,
                     updatedAnnualSavings,
@@ -1111,13 +1158,15 @@ export async function POST(request: Request) {
                 });
             }
 
-            // IVA for Colombia is 19%
-            const ivaRate = getIvaRate('colombia');
+            // IVA rate based on country (Colombia 19%, Guatemala 12%)
+            const ivaRate = getIvaRate(country);
             const ivaAmount = totalCost * ivaRate;
             const totalCostWithIva = totalCost + ivaAmount;
             // Save to database
             let senderEmail: string | undefined = 'InformeCalculadoraSolar';
             try {
+                const safePaybackYears = (typeof paybackYears === 'number' && isFinite(paybackYears)) ? Math.round(paybackYears) : null;
+
                 const newSubmission = await prisma.submission.create({
                     data: {
                         address: data.location,
@@ -1141,14 +1190,14 @@ export async function POST(request: Request) {
                         costPerWatt: costPerWatt,
                         co2Reduction: co2Reduction,
                         treesPlanted: treesPlanted,
-                        currencyCode: 'COP',
+                        currencyCode: targetCurrency,
                         averageKwhConsumption: consumptionValue,
                         averagePricePerKWh: averagePrice,
 
-                        // Financial savings metrics for Colombia
+                        // Financial savings metrics
                         firstYearSavings: annualSavings,
                         lifetimeSavings: totalLifetimeSavings,
-                        paybackYears: paybackYears,
+                        paybackYears: safePaybackYears,
 
                         // New detailed cost fields
                         priceKWUsed: effectivePriceKW,
@@ -1157,14 +1206,13 @@ export async function POST(request: Request) {
                         ivaAmount: ivaAmount,
                         totalCostWithIva: totalCostWithIva,
 
-                        // No incentives for Colombia
                         panelApplication: data.panelApplication as PanelApplication | undefined,
                         panelType: data.panelType as PanelType | undefined,
 
-                        // Store selected materials for Colombia
+                        // Store selected materials
                         selectedPanelName: selectedPanelNameColombia,
-                        selectedInverterName: selectedInverterNameColombia,
-                        selectedInverterPeakPower: selectedInverterPeakPowerColombia,
+                        selectedInverterName: selectedInverterNameCountry,
+                        selectedInverterPeakPower: selectedInverterPeakPowerCountry,
                         orthophotoUrl: orthophotoUrl,
                         orthophotoBase64: orthophotoBase64,
                     } as any,
@@ -1219,28 +1267,28 @@ export async function POST(request: Request) {
                             costBreakdown,
                             ivaAmount,
                             totalCostWithIva,
-                            currencyCode: 'COP',
+                            currencyCode: targetCurrency,
                             averageKwhConsumption: consumptionValue,
                             googleSolarData: pvgisData,
-                            country: 'colombia',
+                            country: country,
                             // Financial calculations
                             estimatedAnnualSavingsAmount: annualSavings,
                             estimatedTotalLifetimeSavingsAmount: totalLifetimeSavings,
-                            paybackYears: paybackYears,
+                            paybackYears: safePaybackYears,
                             averagePricePerKWh: averagePrice,
 
-                            // Selected materials for Colombia
+                            // Selected materials
                             selectedPanelName: selectedPanelNameColombia,
-                            selectedInverterName: selectedInverterNameColombia,
-                            selectedInverterPeakPower: selectedInverterPeakPowerColombia,
+                            selectedInverterName: selectedInverterNameCountry,
+                            selectedInverterPeakPower: selectedInverterPeakPowerCountry,
                         }
                     },
                     { headers: corsHeaders(origin || '') }
                 );
             } catch (dbError) {
-                console.error('Database error saving submission (Colombia):', dbError);
+                console.error(`Database error saving submission (${country}):`, dbError);
                 if (process.env.NODE_ENV === 'development' || (origin && origin.includes('localhost'))) {
-                    console.warn('[SUBMIT] Local dev mode: DB offline, returning simulated success for submit (Colombia)');
+                    console.warn(`[SUBMIT] Local dev mode: DB offline, returning simulated success for submit (${country})`);
                     return NextResponse.json(
                         {
                             success: true,
@@ -1260,17 +1308,17 @@ export async function POST(request: Request) {
                                 costBreakdown,
                                 ivaAmount,
                                 totalCostWithIva,
-                                currencyCode: 'COP',
+                                currencyCode: targetCurrency,
                                 averageKwhConsumption: consumptionValue,
                                 googleSolarData: pvgisData,
-                                country: 'colombia',
+                                country: country,
                                 estimatedAnnualSavingsAmount: annualSavings,
                                 estimatedTotalLifetimeSavingsAmount: totalLifetimeSavings,
-                                paybackYears: paybackYears,
+                                paybackYears: (typeof paybackYears === 'number' && isFinite(paybackYears)) ? Math.round(paybackYears) : null,
                                 averagePricePerKWh: averagePrice,
                                 selectedPanelName: selectedPanelNameColombia,
-                                selectedInverterName: selectedInverterNameColombia,
-                                selectedInverterPeakPower: selectedInverterPeakPowerColombia,
+                                selectedInverterName: selectedInverterNameCountry,
+                                selectedInverterPeakPower: selectedInverterPeakPowerCountry,
                             }
                         },
                         { headers: corsHeaders(origin || '') }
@@ -1323,7 +1371,7 @@ export async function POST(request: Request) {
                     totalCost: googleSolarData.estimatedInstallationCostAmount, // This is base cost before IVA from our calcs or Google's
                     firstYearSavings: googleSolarData.estimatedAnnualSavingsAmount,
                     lifetimeSavings: googleSolarData.estimatedTotalLifetimeSavingsAmount,
-                    paybackYears: googleSolarData.paybackYears,
+                    paybackYears: googleSolarData.paybackYears ? Math.round(googleSolarData.paybackYears) : null,
                     currencyCode: finalCurrency, // Use final currency instead of googleSolarData.currencyCode
                     monthlyElectricityBillAmount: googleSolarData.monthlyElectricityBillAmount,
                     averageKwhConsumption: googleSolarData.averageKwhConsumption,
