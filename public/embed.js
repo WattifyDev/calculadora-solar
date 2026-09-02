@@ -155,47 +155,133 @@
     #${containerId} .solar-calc__container {
       position: relative !important;
       width: 100% !important;
-      max-width: 700px !important;
-      margin: 40px auto !important;
-      padding: 32px !important;
-      border: 1px solid rgba(229, 231, 235, 0.5) !important;
-      border-radius: 16px !important;
+      max-width: 820px !important;
+      margin: 24px auto !important;
+      padding: 24px 28px !important;
+      border: 1px solid rgba(229, 231, 235, 0.7) !important;
+      border-radius: 20px !important;
       background: #ffffff !important;
-      font-size: 16px !important;
-      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.1) !important;
-      backdrop-filter: blur(16px) !important;
+      font-size: 15px !important;
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    @media (max-width: 640px) {
+      #${containerId} .solar-calc__dialog {
+        padding: 0 !important;
+      }
+      #${containerId} .solar-calc__container {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        min-height: 100vh !important;
+        max-width: 100% !important;
+        padding: 16px !important;
+      }
+    }
+
+    #${containerId} .solar-calc__header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      margin-bottom: 16px !important;
+      padding-bottom: 12px !important;
+      border-bottom: 1px solid #f1f5f9 !important;
     }
 
     #${containerId} .solar-calc__title {
-      font-size: 28px !important;
-      font-weight: 700 !important;
-      color: #111827 !important;
-      margin-bottom: 24px !important;
-      font-family: inherit !important;
-      line-height: 1.2 !important;
-      text-align: center !important;
+      font-size: 22px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      margin: 0 !important;
       letter-spacing: -0.02em !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+
+    #${containerId} .solar-calc__step-pills {
+      display: flex !important;
+      gap: 6px !important;
+      align-items: center !important;
+    }
+
+    #${containerId} .solar-calc__step-pill {
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      padding: 4px 10px !important;
+      border-radius: 20px !important;
+      background: #f1f5f9 !important;
+      color: #64748b !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #${containerId} .solar-calc__step-pill.active {
+      background: #CBFF54 !important;
+      color: #063231 !important;
+    }
+
+    #${containerId} .solar-calc__capitals-bar {
+      display: flex !important;
+      gap: 8px !important;
+      margin-bottom: 12px !important;
+      align-items: center !important;
+      flex-wrap: wrap !important;
+    }
+
+    #${containerId} .solar-calc__capitals-label {
+      font-size: 12px !important;
+      font-weight: 600 !important;
+      color: #64748b !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.05em !important;
+      margin-right: 4px !important;
+    }
+
+    #${containerId} .solar-calc__capital-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 6px 12px !important;
+      border-radius: 8px !important;
+      border: 1px solid #e2e8f0 !important;
+      background: #f8fafc !important;
+      color: #1e293b !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      cursor: pointer !important;
+      transition: all 0.15s ease !important;
+    }
+
+    #${containerId} .solar-calc__capital-btn:hover {
+      background: #f0fdf4 !important;
+      border-color: #22c55e !important;
+      transform: translateY(-1px) !important;
+    }
+
+    #${containerId} .solar-calc__capital-btn.active {
+      background: #063231 !important;
+      color: #CBFF54 !important;
+      border-color: #063231 !important;
     }
 
     #${containerId} .solar-calc__label {
       display: block !important;
-      margin-bottom: 6px !important;
-      font-weight: 500 !important;
-      color: #374151 !important;
-      font-size: 14px !important;
-      line-height: 20px !important;
+      margin-bottom: 4px !important;
+      font-weight: 600 !important;
+      color: #334155 !important;
+      font-size: 13px !important;
+      line-height: 18px !important;
       text-align: left !important;
     }
 
     #${containerId} .solar-calc__input {
       width: 100% !important;
       padding: 10px 14px !important;
-      margin: 4px 0 16px !important;
-      border: 1.5px solid #e5e7eb !important;
-      border-radius: 8px !important;
-      font-size: 15px !important;
-      line-height: 24px !important;
-      color: #111827 !important;
+      margin: 2px 0 12px !important;
+      border: 1.5px solid #cbd5e1 !important;
+      border-radius: 10px !important;
+      font-size: 14px !important;
+      line-height: 20px !important;
+      color: #0f172a !important;
       background-color: #ffffff !important;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
       transition: all 0.2s ease !important;
@@ -204,25 +290,62 @@
     #${containerId} .solar-calc__input:focus {
       outline: none !important;
       border-color: #22c55e !important;
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15) !important;
     }
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    #${containerId} .solar-calc__map-container {
+      height: 310px !important;
+      width: 100% !important;
+      margin: 8px 0 12px !important;
+      border-radius: 14px !important;
+      border: 1.5px solid #cbd5e1 !important;
+      overflow: hidden !important;
+      position: relative !important;
+      z-index: 1 !important;
+      background: #0f172a !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    @media (max-width: 640px) {
+      #${containerId} .solar-calc__map-container {
+        height: 250px !important;
+      }
+    }
+
+    #${containerId} .solar-calc__map-overlay-guide {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 10px !important;
+      padding: 8px 12px !important;
+      margin-bottom: 12px !important;
+      font-size: 12px !important;
+      color: #475569 !important;
+    }
+
+    #${containerId} .solar-calc__action-bar {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+      margin-top: 16px !important;
+      padding-top: 12px !important;
+      border-top: 1px solid #f1f5f9 !important;
     }
 
     #${containerId} .solar-calc__button {
-      display: block !important;
-      width: 100% !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
       padding: 12px 24px !important;
-      margin-top: 24px !important;
       background-color: #22c55e !important;
       color: #ffffff !important;
       border: none !important;
-      border-radius: 8px !important;
-      font-size: 16px !important;
-      font-weight: 600 !important;
+      border-radius: 10px !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
       cursor: pointer !important;
       transition: all 0.2s ease !important;
       text-transform: none !important;
@@ -231,389 +354,246 @@
     #${containerId} .solar-calc__button:hover {
       background-color: #16a34a !important;
       transform: translateY(-1px) !important;
-      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15) !important;
+      box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25) !important;
     }
 
-    #${containerId} .solar-calc__button:active {
-      transform: translateY(0) !important;
-    }
-
-    #${containerId} .solar-calc__button--secondary {
-      background-color: transparent !important;
-      border: 1px solid #e5e7eb !important;
-      color: #6b7280 !important;
-      font-size: 13px !important;
-      padding: 8px 16px !important;
-      margin-top: 8px !important;
-      border-radius: 6px !important;
-      box-shadow: none !important;
-      transition: all 0.15s ease !important;
-    }
-
-    #${containerId} .solar-calc__button--secondary:hover {
-      background-color: #f9fafb !important;
-      border-color: #d1d5db !important;
-      color: #374151 !important;
-      transform: none !important;
-    }
-
-    #${containerId} .solar-calc__button--secondary:active {
-      background-color: #f3f4f6 !important;
-      transform: scale(0.98) !important;
-    }
-
-    #${containerId} .solar-calc__button:disabled {
-      background-color: #9ca3af !important;
-      cursor: not-allowed !important;
-      transform: none !important;
-      box-shadow: none !important;
-    }
-
-    #${containerId} .solar-calc__error {
-      color: #dc2626 !important;
-      font-size: 14px !important;
-      margin-top: 4px !important;
-      display: block !important;
-      padding: 8px 12px !important;
-      background-color: #fef2f2 !important;
-      border-radius: 6px !important;
-      border: 1px solid #fee2e2 !important;
-    }
-
-    #${containerId} .solar-calc__checkbox-container {
-      display: flex !important;
-      align-items: flex-start !important;
-      gap: 10px !important;
-      margin: 20px 0 !important;
-      padding: 16px !important;
-      background-color: #f9fafb !important;
-      border-radius: 8px !important;
-      border: 1px solid #f3f4f6 !important;
-    }
-
-    #${containerId} .solar-calc__checkbox {
-      margin-top: 4px !important;
-      width: 16px !important;
-      height: 16px !important;
-      border-radius: 4px !important;
-      border: 1.5px solid #d1d5db !important;
-      cursor: pointer !important;
-    }
-
-    #${containerId} .solar-calc__checkbox:checked {
-      background-color: #22c55e !important;
-      border-color: #22c55e !important;
-    }
-
-    #${containerId} .solar-calc__checkbox-label {
-      font-size: 14px !important;
-      color: #4b5563 !important;
-      line-height: 1.5 !important;
+    #${containerId} .solar-calc__button--primary {
       flex: 1 !important;
-      text-align: left !important;
     }
 
-    #${containerId} .solar-calc__personal-info {
-      margin-top: 32px !important;
-      padding-top: 28px !important;
-      border-top: 1px solid #f3f4f6 !important;
+    #${containerId} .solar-calc__button--back {
+      background-color: #f1f5f9 !important;
+      color: #334155 !important;
+      border: 1px solid #cbd5e1 !important;
+      font-weight: 600 !important;
+      padding: 12px 18px !important;
     }
 
-    #${containerId} .solar-calc__map-container {
-      height: 400px !important;
-      width: 100% !important;
-      margin: 12px 0 20px !important;
-      border-radius: 12px !important;
-      border: 1.5px solid #e5e7eb !important;
-      overflow: hidden !important;
-      position: relative !important;
-      z-index: 1 !important;
-      background: #f9fafb !important;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
-    }
-
-    #${containerId} .solar-calc__location-container {
-      position: relative !important;
-      display: flex !important;
-      align-items: center !important;
-      margin: 4px 0 16px !important;
-    }
-
-    #${containerId} .solar-calc__input--location {
-      padding-right: 40px !important;
-      margin: 0 !important;
-    }
-
-    #${containerId} .solar-calc__geolocation-button {
-      position: absolute !important;
-      right: 8px !important;
-      top: 0 !important;
+    #${containerId} .solar-calc__button--back:hover {
+      background-color: #e2e8f0 !important;
+      color: #0f172a !important;
       transform: none !important;
-      background: none !important;
-      border: none !important;
-      cursor: pointer !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      border-radius: 6px !important;
-      transition: all 0.2s ease !important;
+      box-shadow: none !important;
+    }
+
+    /* Screen 2: Country Badge and Bill Slider */
+    #${containerId} .solar-calc__country-card {
       display: flex !important;
       align-items: center !important;
-      justify-content: center !important;
-      width: 32px !important;
-      height: 100% !important;
-      font-size: 16px !important;
+      justify-content: space-between !important;
+      padding: 12px 16px !important;
+      background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+      border: 1px solid #86efac !important;
+      border-radius: 12px !important;
+      margin-bottom: 16px !important;
+    }
+
+    #${containerId} .solar-calc__country-info {
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+    }
+
+    #${containerId} .solar-calc__country-flag {
+      font-size: 24px !important;
       line-height: 1 !important;
     }
 
-    #${containerId} .solar-calc__geolocation-button:hover {
-      background-color: #f3f4f6 !important;
-    }
-
-    #${containerId} .solar-calc__instruction {
-      background-color: #eff6ff !important;
-      border: 1px solid #bfdbfe !important;
-      border-radius: 8px !important;
-      padding: 12px 16px !important;
-      margin: 12px 0 !important;
+    #${containerId} .solar-calc__country-name {
       font-size: 14px !important;
-      color: #1e40af !important;
-      line-height: 1.5 !important;
-      text-align: left !important;
-    }
-
-    #${containerId} .solar-calc__instruction-icon {
-      display: inline !important;
-      margin-right: 8px !important;
-      font-size: 16px !important;
-    }
-
-    #${containerId} .solar-calc__step {
-      display: none !important;
-      opacity: 0 !important;
-      transition: opacity 0.3s ease-in-out !important;
-      min-height: 300px; /* Prevent layout shifts during transition */
-    }
-
-    #${containerId} .solar-calc__step.active {
-      display: block !important;
-      opacity: 1 !important;
-    }
-
-    #${containerId} .solar-calc__summary {
-      background-color: #f8fafc !important;o
-      border: 1px solid #e2e8f0 !important;
-      border-radius: 12px !important;
-      padding: 24px !important;
-      margin: 20px 0 0 !important;
-      padding-bottom: 12px !important;
-    }
-
-    #${containerId} .solar-calc__summary-title {
-    margin-top: 10px !important;
-      font-size: 20px !important;
-      font-weight: 600 !important;
-      color: #1e293b !important;
-      margin-bottom: 16px !important;
-      text-align: center !important;
-    }
-
-    #${containerId} .solar-calc__summary-grid {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr !important;
-      gap: 16px !important;
-    }
-
-    #${containerId} .solar-calc__summary-item {
-      text-align: center !important;
-      padding: 20px !important; /* Increased padding */
-      background: #ffffff !important;
-      border-radius: 10px !important; /* Slightly more rounded */
-      border: 1px solid #e2e8f0 !important; /* Softer border */
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important; /* Subtle shadow */
-      transition: transform 0.2s ease, box-shadow 0.2s ease !important;
-    }
-
-    #${containerId} .solar-calc__summary-item:hover {
-      transform: translateY(-2px) !important;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-
-    #${containerId} .solar-calc__summary-label {
-      font-size: 12px !important;
-      color: #64748b !important;
-      text-transform: uppercase !important;
-      font-weight: 500 !important;
-      margin-bottom: 4px !important;
-    }
-
-    #${containerId} .solar-calc__summary-value {
-      font-size: 18px !important;
       font-weight: 700 !important;
-      color: #0f172a !important;
+      color: #065f46 !important;
     }
 
-    #${containerId} .solar-calc__summary-average-price {
-      display: block !important;
-      width: 100% !important;
-      text-align: center !important;
-      margin-top: 32px !important;
+    #${containerId} .solar-calc__country-currency-badge {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      background: #064e3b !important;
+      color: #CBFF54 !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      padding: 4px 10px !important;
+      border-radius: 20px !important;
+    }
+
+    /* Interactive Bill Slider */
+    #${containerId} .solar-calc__slider-box {
+      background: #ffffff !important;
+      border: 1.5px solid #e2e8f0 !important;
+      border-radius: 14px !important;
       padding: 16px !important;
-      font-size: 14px !important;
-      color: #64748b !important;
-      border-top: 1px solid #e2e8f0 !important;
+      margin-bottom: 16px !important;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important;
     }
 
-    #${containerId} .solar-calc__summary-loading {
-      text-align: center !important;
-      padding: 40px 20px !important;
-    }
-
-    #${containerId} .solar-calc__spinner {
-      display: inline-block !important;
-      width: 24px !important;
-      height: 24px !important;
-      border: 3px solid #e2e8f0 !important;
-      border-top: 3px solid #22c55e !important;
-      border-radius: 50% !important;
-      animation: solar-calc-spin 1s linear infinite !important;
+    #${containerId} .solar-calc__slider-header {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: flex-end !important;
       margin-bottom: 12px !important;
     }
 
-    /* New spinner for buttons */
-    #${containerId} .solar-calc__button .solar-calc__button-spinner {
-      display: none !important; /* Hidden by default */
-      width: 16px !important;
-      height: 16px !important;
-      border: 2px solid rgba(255, 255, 255, 0.5) !important;
-      border-top-color: #ffffff !important;
+    #${containerId} .solar-calc__slider-value-display {
+      font-size: 24px !important;
+      font-weight: 800 !important;
+      color: #0f172a !important;
+      letter-spacing: -0.02em !important;
+    }
+
+    #${containerId} .solar-calc__slider-kwh-equiv {
+      font-size: 12px !important;
+      color: #64748b !important;
+      font-weight: 500 !important;
+    }
+
+    #${containerId} .solar-calc__range-input {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 100% !important;
+      height: 8px !important;
+      border-radius: 5px !important;
+      background: #e2e8f0 !important;
+      outline: none !important;
+      margin: 8px 0 !important;
+      cursor: pointer !important;
+      transition: background 0.15s ease !important;
+    }
+
+    #${containerId} .solar-calc__range-input::-webkit-slider-thumb {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 26px !important;
+      height: 26px !important;
       border-radius: 50% !important;
-      animation: solar-calc-spin 0.8s linear infinite !important;
-      margin-right: 8px !important; /* Space between spinner and text */
-      vertical-align: middle !important;
+      background: #22c55e !important;
+      border: 3px solid #ffffff !important;
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4) !important;
+      cursor: grab !important;
+      transition: transform 0.15s ease !important;
     }
 
-    #${containerId} .solar-calc__button.loading .solar-calc__button-spinner {
-      display: inline-block !important; /* Show when loading */
-    }
-    
-    #${containerId} .solar-calc__button.loading .solar-calc__button-text {
-      /* Optional: style text when loading, e.g., vertical-align if needed */
-      vertical-align: middle !important;
+    #${containerId} .solar-calc__range-input::-webkit-slider-thumb:active {
+      transform: scale(1.15) !important;
+      cursor: grabbing !important;
     }
 
-    @keyframes solar-calc-spin {
+    #${containerId} .solar-calc__range-input::-moz-range-thumb {
+      width: 26px !important;
+      height: 26px !important;
+      border-radius: 50% !important;
+      background: #22c55e !important;
+      border: 3px solid #ffffff !important;
+      box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4) !important;
+      cursor: grab !important;
+    }
+
+    #${containerId} .solar-calc__options-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 12px !important;
+      margin-bottom: 12px !important;
+    }
+
+    @media (max-width: 640px) {
+      #${containerId} .solar-calc__options-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    /* Premium Satellite Scanner Animation */
+    #${containerId} .solar-calc__scanner-modal {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      background: rgba(255, 255, 255, 0.96) !important;
+      backdrop-filter: blur(8px) !important;
+      border-radius: 20px !important;
+      z-index: 50 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 32px !important;
+      text-align: center !important;
+    }
+
+    #${containerId} .solar-calc__radar-box {
+      position: relative !important;
+      width: 90px !important;
+      height: 90px !important;
+      margin-bottom: 20px !important;
+    }
+
+    #${containerId} .solar-calc__radar-circle {
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      border: 2px solid #22c55e !important;
+      border-radius: 50% !important;
+      opacity: 0.3 !important;
+    }
+
+    #${containerId} .solar-calc__radar-sweep {
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      width: 42px !important;
+      height: 42px !important;
+      border-top: 3px solid #16a34a !important;
+      border-right: 3px solid transparent !important;
+      border-radius: 50% !important;
+      transform-origin: 0% 0% !important;
+      animation: solar-calc-sweep 1.2s linear infinite !important;
+    }
+
+    #${containerId} .solar-calc__radar-icon {
+      position: absolute !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+      font-size: 28px !important;
+    }
+
+    @keyframes solar-calc-sweep {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
 
-    #${containerId} .solar-calc__back-button {
-      background-color: #f8fafc !important;
-      border: 1px solid #e2e8f0 !important;
-      color: #475569 !important;
-      font-size: 14px !important;
-      padding: 8px 16px !important;
-      margin-top: 16px !important;
-      margin-right: 12px !important;
-      border-radius: 6px !important;
-      cursor: pointer !important;
-      transition: all 0.15s ease !important;
-    }
-
-    #${containerId} .solar-calc__back-button:hover {
-      background-color: #f1f5f9 !important;
-      border-color: #cbd5e1 !important;
-      color: #334155 !important;
-    }
-
-    #${containerId} .solar-calc__input-group {
-      display: flex !important;
-      align-items: stretch !important;
+    #${containerId} .solar-calc__scanner-progress {
       width: 100% !important;
-      margin-bottom: 16px !important;
-      border-radius: 8px !important;
+      max-width: 320px !important;
+      height: 6px !important;
+      background: #e2e8f0 !important;
+      border-radius: 10px !important;
       overflow: hidden !important;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-      border: 1.5px solid #e5e7eb !important;
-      background: #fff !important;
+      margin-top: 14px !important;
     }
-    #${containerId} .solar-calc__input--left {
-      border: none !important;
-      border-radius: 8px 0 0 8px !important;
-      border-right: 1.5px solid #e5e7eb !important;
-      margin: 0 !important;
-      font-size: 15px !important;
-      padding: 10px 14px !important;
-      flex: 1 1 0 !important;
-      min-width: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
+
+    #${containerId} .solar-calc__scanner-bar {
+      height: 100% !important;
+      width: 25% !important;
+      background: linear-gradient(90deg, #22c55e, #CBFF54) !important;
+      border-radius: 10px !important;
+      transition: width 0.4s ease !important;
     }
-    #${containerId} .solar-calc__input--right {
-      border: none !important;
-      border-radius: 0 8px 8px 0 !important;
-      margin: 0 !important;
-      font-size: 15px !important;
-      padding: 10px 14px !important;
-      width: 90px !important;
-      min-width: 70px !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      flex: 0 0 auto !important;
-    }
-    #${containerId} .solar-calc__input--currency {
-      appearance: none !important;
-      -webkit-appearance: none !important;
-      -moz-appearance: none !important;
-      text-align: left !important;
-      cursor: pointer !important;
-    }
-    #${containerId} .solar-calc__input-group:focus-within {
-      border-color: #22c55e !important;
-      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1) !important;
-    }
-    #${containerId} .solar-calc__roof-segments {
-      background: #ffffff !important;
-      border: 1px solid #e2e8f0 !important;
-      border-radius: 12px !important;
-      padding: 16px !important;
-      margin-top: 20px !important;
-    }
-    #${containerId} .solar-calc__roof-segments-title {
-      font-size: 15px !important;
+
+    #${containerId} .solar-calc__scanner-status-text {
+      font-size: 14px !important;
       font-weight: 600 !important;
-      color: #1e293b !important;
-      margin-bottom: 12px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
+      color: #0f172a !important;
+      margin-top: 8px !important;
     }
-    #${containerId} .solar-calc__segment-card {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      padding: 12px !important;
-      margin-bottom: 8px !important;
-      border: 1.5px solid #e2e8f0 !important;
-      border-radius: 8px !important;
-      background: #f8fafc !important;
-      transition: all 0.2s ease !important;
-    }
-    #${containerId} .solar-calc__segment-card:hover {
-      border-color: #22c55e !important;
-      background: #f0fdf4 !important;
-    }
-    #${containerId} .solar-calc__segment-badge {
-      display: inline-block !important;
-      padding: 2px 8px !important;
-      border-radius: 6px !important;
+
+    #${containerId} .solar-calc__scanner-sub-text {
       font-size: 12px !important;
-      font-weight: 700 !important;
-      color: #ffffff !important;
+      color: #64748b !important;
+      margin-top: 4px !important;
     }
-    #${containerId} .solar-calc__segment-badge.grade-A { background-color: #22c55e !important; }
-    #${containerId} .solar-calc__segment-badge.grade-B { background-color: #3b82f6 !important; }
-    #${containerId} .solar-calc__segment-badge.grade-C { background-color: #f59e0b !important; }
-    #${containerId} .solar-calc__segment-badge.grade-D { background-color: #64748b !important; }
   `;
 
   const formHtml = `
@@ -625,127 +605,222 @@
       <div class="solar-calc__dialog">
         <div class="solar-calc__container">
           <button type="button" class="solar-calc__dialog-close" aria-label="Cerrar">×</button>
-          <h2 class="solar-calc__title">Calculadora Solar</h2>
           
-          <!-- Step 1: Data Collection -->
-          <div id="step1-${containerId}" class="solar-calc__step active">
-            <form id="solarCalculatorForm-${containerId}">
-              <div>
-                <label class="solar-calc__label" for="location-${containerId}">
-                  Ubicación
-                </label>
-                <div class="solar-calc__location-container">
-                  <input 
-                    type="text" 
-                    name="location" 
-                    id="location-${containerId}"
-                    class="solar-calc__input solar-calc__input--location" 
-                    required
-                    placeholder="Busca tu dirección"
-                    autocomplete="off"
-                  >
-                  <button 
-                    type="button" 
-                    id="geolocation-${containerId}"
-                    class="solar-calc__geolocation-button"
-                    title="Usar mi ubicación actual"
-                  >
-                    📍
-                  </button>
+          <div class="solar-calc__header">
+            <h2 class="solar-calc__title">
+              <span>☀️</span> Calculadora Solar
+            </h2>
+            <div class="solar-calc__step-pills">
+              <span id="pill1-${containerId}" class="solar-calc__step-pill active">1. Ubicación</span>
+              <span id="pill2-${containerId}" class="solar-calc__step-pill">2. Consumo</span>
+              <span id="pill3-${containerId}" class="solar-calc__step-pill">3. Resultados</span>
+            </div>
+          </div>
+          
+          <!-- Screen 1: Location, Capital Selectors & Map Roof Selection -->
+          <div id="step1a-${containerId}" class="solar-calc__step active">
+            <div>
+              <div class="solar-calc__capitals-bar">
+                <span class="solar-calc__capitals-label">Ir directo a:</span>
+                <button type="button" class="solar-calc__capital-btn" data-lat="40.4168" data-lng="-3.7038" data-country="Spain" data-currency="EUR" data-flag="🇪🇸" data-countryname="España">
+                  <span>🇪🇸</span> Madrid
+                </button>
+                <button type="button" class="solar-calc__capital-btn" data-lat="4.7110" data-lng="-74.0721" data-country="Colombia" data-currency="COP" data-flag="🇨🇴" data-countryname="Colombia">
+                  <span>🇨🇴</span> Bogotá
+                </button>
+                <button type="button" class="solar-calc__capital-btn" data-lat="14.6349" data-lng="-90.5069" data-country="Guatemala" data-currency="GTQ" data-flag="🇬🇹" data-countryname="Guatemala">
+                  <span>🇬🇹</span> Ciudad de Guatemala
+                </button>
+              </div>
+
+              <div class="solar-calc__location-container">
+                <input 
+                  type="text" 
+                  name="location" 
+                  id="location-${containerId}"
+                  class="solar-calc__input solar-calc__input--location" 
+                  required
+                  placeholder="Busca tu dirección o municipio..."
+                  autocomplete="off"
+                >
+                <button 
+                  type="button" 
+                  id="geolocation-${containerId}"
+                  class="solar-calc__geolocation-button"
+                  title="Usar mi ubicación actual"
+                >
+                  📍
+                </button>
+              </div>
+
+              <div id="map-${containerId}" class="solar-calc__map-container"></div>
+
+              <div class="solar-calc__map-overlay-guide">
+                <div>
+                  <strong>🛰️ Traza tu tejado:</strong> Haz clic en 4 esquinas de tu tejado sobre la foto satélite para delimitar la superficie solar.
                 </div>
-                <div id="map-${containerId}" class="solar-calc__map-container"></div>
                 <button 
                   type="button" 
                   id="resetPolygon-${containerId}"
                   class="solar-calc__button solar-calc__button--secondary"
-                  style="display: none;" 
+                  style="display: none; padding: 4px 10px !important; margin: 0 !important; font-size: 12px !important;" 
                 >
-                  ↻ Reiniciar selección
+                  ↻ Reiniciar
                 </button>
-                <div id="polygonStatus-${containerId}" class="solar-calc__instruction" style="display: none !important; background-color: #f0f9ff !important; border-color: #0ea5e9 !important; color: #0c4a6e !important;">
-                  <span class="solar-calc__instruction-icon">📍</span>
-                  <span id="polygonStatusText-${containerId}">Puntos seleccionados: 0/4</span>
-                </div>
-                <div class="solar-calc__instruction">
-                  <span class="solar-calc__instruction-icon">ℹ️</span>
-                  <strong>Instrucciones:</strong> Usa la vista satélite para ver claramente tu tejado. Haz clic en 4 puntos del mapa que coincidan con las esquinas del tejado de tu hogar para delimitar el área donde se instalarán los paneles solares. Puedes usar el botón "Resetear Puntos del Tejado" para empezar de nuevo.
-                </div>
-                <input type="hidden" name="polygonCoordinates" id="polygonCoordinates-${containerId}">
-                <input type="hidden" name="latitude" id="latitude-${containerId}">
-                <input type="hidden" name="longitude" id="longitude-${containerId}">
               </div>
-              <div>
-                <label class="solar-calc__label" for="consumption-${containerId}">
-                  Consumo mensual medio (kWh)
-                </label>
+
+              <div id="polygonStatus-${containerId}" class="solar-calc__instruction" style="display: none !important; background-color: #f0f9ff !important; border-color: #0ea5e9 !important; color: #0c4a6e !important; padding: 8px 12px !important; margin: 6px 0 !important;">
+                <span class="solar-calc__instruction-icon">📍</span>
+                <span id="polygonStatusText-${containerId}">Puntos seleccionados: 0/4</span>
+              </div>
+
+              <input type="hidden" name="polygonCoordinates" id="polygonCoordinates-${containerId}">
+              <input type="hidden" name="latitude" id="latitude-${containerId}">
+              <input type="hidden" name="longitude" id="longitude-${containerId}">
+            </div>
+
+            <div class="solar-calc__action-bar">
+              <span id="locationFeedback-${containerId}" style="font-size: 12px; color: #64748b;">Selecciona dirección o marca en el mapa</span>
+              <button type="button" id="goToStep2-${containerId}" class="solar-calc__button solar-calc__button--primary">
+                Siguiente: Consumo y Tarifa →
+              </button>
+            </div>
+          </div>
+
+          <!-- Screen 2: Bill/Consumption Interactive Slider & Technical Details -->
+          <div id="step1b-${containerId}" class="solar-calc__step">
+            <form id="solarCalculatorForm-${containerId}">
+              <!-- Auto-detected Country Badge with Flag -->
+              <div class="solar-calc__country-card">
+                <div class="solar-calc__country-info">
+                  <span id="countryFlagBadge-${containerId}" class="solar-calc__country-flag">🇪🇸</span>
+                  <div>
+                    <div id="countryNameBadge-${containerId}" class="solar-calc__country-name">España detectada</div>
+                    <div style="font-size: 11px; color: #047857;">Tarifa y radiación solar ajustada localmente</div>
+                  </div>
+                </div>
+                <div class="solar-calc__country-currency-badge">
+                  <span id="countryCurrencyBadge-${containerId}">Moneda: EUR (€)</span>
+                </div>
+              </div>
+
+              <!-- Interactive Bill / Consumption Slider Box -->
+              <div class="solar-calc__slider-box">
+                <div class="solar-calc__slider-header">
+                  <div>
+                    <label class="solar-calc__label" for="billRange-${containerId}">
+                      Tu factura de luz mensual estimada
+                    </label>
+                    <div class="solar-calc__slider-kwh-equiv" id="kwhEquivText-${containerId}">
+                      Consumo estimado: ~375 kWh/mes
+                    </div>
+                  </div>
+                  <div class="solar-calc__slider-value-display" id="sliderValueDisplay-${containerId}">
+                    75 € / mes
+                  </div>
+                </div>
+
                 <input 
-                  type="number" 
-                  name="consumption" 
-                  id="consumption-${containerId}"
-                  class="solar-calc__input" 
-                  required 
-                  min="0"
-                  step="any"
+                  type="range" 
+                  id="billRange-${containerId}" 
+                  class="solar-calc__range-input" 
+                  min="20" 
+                  max="400" 
+                  step="5" 
+                  value="75"
                 >
+
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; font-weight: 500;">
+                  <span id="sliderMinLabel-${containerId}">20 €</span>
+                  <span>Desliza para ajustar tu gasto mensual</span>
+                  <span id="sliderMaxLabel-${containerId}">400+ €</span>
+                </div>
               </div>
-              <div>
-                <label class="solar-calc__label" for="averagePricePerKWh-${containerId}">
-                  Precio medio de la electricidad (€/kWh) o (COP/kWh)
-                  <span style="color: #64748b; font-size: 12px; margin-left: 4px;">(opcional)</span>
-                </label>
-                <div class="solar-calc__input-group">
-                  <input 
-                    type="number" 
-                    name="averagePricePerKWh" 
-                    id="averagePricePerKWh-${containerId}"
-                    class="solar-calc__input solar-calc__input--left" 
-                    min="0"
-                    step="any"
-                    placeholder="0.20"
-                    aria-label="Precio medio de la electricidad (€/kWh)"
-                  >
-                  <select name="averagePriceCurrency" id="averagePriceCurrency-${containerId}" class="solar-calc__input solar-calc__input--currency solar-calc__input--right">
+
+              <input type="hidden" name="consumption" id="consumption-${containerId}" value="375">
+
+              <!-- Optional Manual Price & Hidden Currency -->
+              <div style="margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label class="solar-calc__label" for="averagePricePerKWh-${containerId}" style="margin: 0;">
+                    Coste de electricidad por kWh
+                  </label>
+                  <select name="averagePriceCurrency" id="averagePriceCurrency-${containerId}" class="solar-calc__input" style="width: auto !important; padding: 4px 8px !important; margin: 0 !important; font-size: 12px !important; border-radius: 6px !important;">
                     <option value="EUR">🇪🇸 EUR (€)</option>
                     <option value="COP">🇨🇴 COP ($)</option>
                     <option value="GTQ">🇬🇹 GTQ (Q)</option>
                   </select>
                 </div>
-                <div style="color: #6b7280; font-size: 13px;">Puedes obtenerlo en tu factura de la luz</div>
-              </div>
-              <div>
-                <label class="solar-calc__label" for="panelApplication-${containerId}">
-                  Tipo de Instalación
-                </label>
-                <select 
-                  name="panelApplication" 
-                  id="panelApplication-${containerId}" 
-                  class="solar-calc__input"
-                  required
+                <input 
+                  type="number" 
+                  name="averagePricePerKWh" 
+                  id="averagePricePerKWh-${containerId}"
+                  class="solar-calc__input" 
+                  min="0"
+                  step="any"
+                  placeholder="0.20"
+                  style="margin-top: 4px !important;"
                 >
-                  <option value="RESIDENCIAL">Residencial</option>
-                  <option value="INDUSTRIAL">Industrial</option>
-                </select>
-              </div>
-              <div>
-                <label class="solar-calc__label" for="panelType-${containerId}">
-                  Tipo de Panel
-                </label>
-                <select 
-                  name="panelType" 
-                  id="panelType-${containerId}" 
-                  class="solar-calc__input"
-                  required
-                >
-                  <option value="NORMAL">Normal</option>
-                  <option value="BLACK">Black</option>
-                </select>
               </div>
 
-              <button type="button" id="calculateButton-${containerId}" class="solar-calc__button">
-                <span class="solar-calc__button-spinner"></span>
-                <span class="solar-calc__button-text">Calcular Potencial Solar</span>
-              </button>
+              <div class="solar-calc__options-grid">
+                <div>
+                  <label class="solar-calc__label" for="panelApplication-${containerId}">
+                    Tipo de Inmueble
+                  </label>
+                  <select 
+                    name="panelApplication" 
+                    id="panelApplication-${containerId}" 
+                    class="solar-calc__input"
+                    required
+                  >
+                    <option value="RESIDENCIAL">Residencial / Hogar 🏡</option>
+                    <option value="INDUSTRIAL">Comercial / Empresa 🏭</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="solar-calc__label" for="panelType-${containerId}">
+                    Estética de Paneles
+                  </label>
+                  <select 
+                    name="panelType" 
+                    id="panelType-${containerId}" 
+                    class="solar-calc__input"
+                    required
+                  >
+                    <option value="NORMAL">Normal de Alta Eficiencia</option>
+                    <option value="BLACK">All-Black Premium ✨</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="solar-calc__action-bar">
+                <button type="button" id="backToStep1a-${containerId}" class="solar-calc__button solar-calc__button--back">
+                  ← Modificar Tejado
+                </button>
+                <button type="button" id="calculateButton-${containerId}" class="solar-calc__button solar-calc__button--primary">
+                  Calcular Potencial Solar ☀️
+                </button>
+              </div>
             </form>
+          </div>
+
+          <!-- Premium Satellite Scanner Modal Overlay -->
+          <div id="scannerModal-${containerId}" class="solar-calc__scanner-modal" style="display: none;">
+            <div class="solar-calc__radar-box">
+              <div class="solar-calc__radar-circle"></div>
+              <div class="solar-calc__radar-sweep"></div>
+              <div class="solar-calc__radar-icon">🛰️</div>
+            </div>
+            <div class="solar-calc__scanner-status-text" id="scannerStatusText-${containerId}">
+              Localizando edificio vía satélite...
+            </div>
+            <div class="solar-calc__scanner-sub-text" id="scannerSubText-${containerId}">
+              Conectando con Google Solar y PVGIS API
+            </div>
+            <div class="solar-calc__scanner-progress">
+              <div class="solar-calc__scanner-bar" id="scannerProgressBar-${containerId}"></div>
+            </div>
           </div>
 
           <!-- Step 2: Solar Data Summary -->
@@ -1046,7 +1121,7 @@
     // Initialize Places Autocomplete
     if (!autocomplete && locationInput) {
       autocomplete = new google.maps.places.Autocomplete(locationInput, {
-        componentRestrictions: { country: ["es", "co"] }, // Support both Spain and Colombia
+        componentRestrictions: { country: ["es", "co", "gt"] }, // Support Spain, Colombia, and Guatemala
         fields: ["geometry", "formatted_address"],
         types: ["address"]
       });
@@ -1277,15 +1352,232 @@
   const backToFormButton = shadow.querySelector(`#backToForm-${containerId}`);
   const backToSummaryButton = shadow.querySelector(`#backToSummary-${containerId}`);
   const submitContactButton = shadow.querySelector(`#submitContact-${containerId}`);
+  const goToStep2Btn = shadow.querySelector(`#goToStep2-${containerId}`);
+  const backToStep1aBtn = shadow.querySelector(`#backToStep1a-${containerId}`);
 
   let solarData = null;
 
+  // Active country state (defaults to Spain / EUR)
+  let currentCountryInfo = {
+    country: 'Spain',
+    countryName: 'España',
+    flag: '🇪🇸',
+    currency: 'EUR',
+    symbol: '€',
+    priceKwh: 0.20,
+    minBill: 20,
+    maxBill: 400,
+    defaultBill: 75
+  };
+
   // Step navigation functions
-  function showStep(stepNumber) {
+  function showStep(stepName) {
     shadow.querySelectorAll('.solar-calc__step').forEach(step => {
       step.classList.remove('active');
     });
-    shadow.querySelector(`#step${stepNumber}-${containerId}`).classList.add('active');
+
+    const targetStep = shadow.querySelector(`#${stepName}-${containerId}`);
+    if (targetStep) {
+      targetStep.classList.add('active');
+    }
+
+    // Update pill indicators
+    const pill1 = shadow.querySelector(`#pill1-${containerId}`);
+    const pill2 = shadow.querySelector(`#pill2-${containerId}`);
+    const pill3 = shadow.querySelector(`#pill3-${containerId}`);
+
+    if (pill1 && pill2 && pill3) {
+      pill1.classList.remove('active');
+      pill2.classList.remove('active');
+      pill3.classList.remove('active');
+
+      if (stepName === 'step1a') {
+        pill1.classList.add('active');
+      } else if (stepName === 'step1b') {
+        pill2.classList.add('active');
+      } else if (stepName === 'step2' || stepName === 'step3') {
+        pill3.classList.add('active');
+      }
+    }
+  }
+
+  // Update country visual badge & slider parameters
+  function applyCountryVisuals(countryData) {
+    currentCountryInfo = { ...currentCountryInfo, ...countryData };
+    
+    const flagBadge = shadow.querySelector(`#countryFlagBadge-${containerId}`);
+    const nameBadge = shadow.querySelector(`#countryNameBadge-${containerId}`);
+    const currencyBadge = shadow.querySelector(`#countryCurrencyBadge-${containerId}`);
+    const currencySelect = shadow.querySelector(`#averagePriceCurrency-${containerId}`);
+    const priceInput = shadow.querySelector(`#averagePricePerKWh-${containerId}`);
+    const billSlider = shadow.querySelector(`#billRange-${containerId}`);
+    const sliderMin = shadow.querySelector(`#sliderMinLabel-${containerId}`);
+    const sliderMax = shadow.querySelector(`#sliderMaxLabel-${containerId}`);
+
+    if (flagBadge) flagBadge.textContent = currentCountryInfo.flag;
+    if (nameBadge) nameBadge.textContent = `${currentCountryInfo.countryName} detectada`;
+    if (currencyBadge) currencyBadge.textContent = `Moneda: ${currentCountryInfo.currency} (${currentCountryInfo.symbol})`;
+
+    if (currencySelect) currencySelect.value = currentCountryInfo.currency;
+    if (priceInput) priceInput.placeholder = String(currentCountryInfo.priceKwh);
+
+    if (billSlider && sliderMin && sliderMax) {
+      billSlider.min = currentCountryInfo.minBill;
+      billSlider.max = currentCountryInfo.maxBill;
+      billSlider.value = currentCountryInfo.defaultBill;
+      sliderMin.textContent = `${currentCountryInfo.minBill} ${currentCountryInfo.symbol}`;
+      sliderMax.textContent = `${currentCountryInfo.maxBill}+ ${currentCountryInfo.symbol}`;
+      updateSliderDisplay(currentCountryInfo.defaultBill);
+    }
+  }
+
+  // Update bill slider value display & consumption equivalent
+  function updateSliderDisplay(val) {
+    const sliderDisplay = shadow.querySelector(`#sliderValueDisplay-${containerId}`);
+    const kwhEquiv = shadow.querySelector(`#kwhEquivText-${containerId}`);
+    const consumptionInput = shadow.querySelector(`#consumption-${containerId}`);
+
+    const numericVal = parseFloat(val);
+    if (sliderDisplay) {
+      sliderDisplay.textContent = `${Math.round(numericVal).toLocaleString('es-ES')} ${currentCountryInfo.symbol} / mes`;
+    }
+
+    // Estimate consumption (kWh = bill / pricePerKWh)
+    const estimatedKWh = Math.round(numericVal / (currentCountryInfo.priceKwh || 0.20));
+    if (kwhEquiv) {
+      kwhEquiv.textContent = `Consumo estimado: ~${estimatedKWh.toLocaleString('es-ES')} kWh/mes`;
+    }
+    if (consumptionInput) {
+      consumptionInput.value = estimatedKWh;
+    }
+  }
+
+  // Slider event listener
+  const billRangeInput = shadow.querySelector(`#billRange-${containerId}`);
+  if (billRangeInput) {
+    billRangeInput.addEventListener('input', (e) => {
+      updateSliderDisplay(e.target.value);
+    });
+  }
+
+  // Setup Capital Buttons (Madrid, Bogotá, Ciudad de Guatemala)
+  const capitalBtns = shadow.querySelectorAll('.solar-calc__capital-btn');
+  capitalBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      capitalBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const lat = parseFloat(btn.dataset.lat);
+      const lng = parseFloat(btn.dataset.lng);
+      const country = btn.dataset.country;
+      const currency = btn.dataset.currency;
+      const flag = btn.dataset.flag;
+      const countryname = btn.dataset.countryname;
+
+      if (map) {
+        map.setCenter({ lat, lng });
+        map.setZoom(16);
+      }
+
+      const latInput = shadow.querySelector(`#latitude-${containerId}`);
+      const lngInput = shadow.querySelector(`#longitude-${containerId}`);
+      const locInput = shadow.querySelector(`#location-${containerId}`);
+      const feedback = shadow.querySelector(`#locationFeedback-${containerId}`);
+
+      if (latInput) latInput.value = lat;
+      if (lngInput) lngInput.value = lng;
+      if (locInput) {
+        locInput.value = `${countryname} (Centro)`;
+        locInput.style.borderColor = '#22c55e';
+        locInput.style.backgroundColor = '#f0fdf4';
+      }
+      if (feedback) {
+        feedback.textContent = `📍 Ubicado en ${countryname}. Ahora traza tu tejado.`;
+        feedback.style.color = '#15803d';
+      }
+
+      // Configure country params
+      let params = {
+        country: country,
+        countryName: countryname,
+        flag: flag,
+        currency: currency,
+        symbol: currency === 'COP' ? '$' : (currency === 'GTQ' ? 'Q' : '€'),
+        priceKwh: currency === 'COP' ? 986 : (currency === 'GTQ' ? 1.60 : 0.20),
+        minBill: currency === 'COP' ? 80000 : (currency === 'GTQ' ? 150 : 20),
+        maxBill: currency === 'COP' ? 2000000 : (currency === 'GTQ' ? 3500 : 400),
+        defaultBill: currency === 'COP' ? 350000 : (currency === 'GTQ' ? 600 : 75)
+      };
+      applyCountryVisuals(params);
+    });
+  });
+
+  // Navigation: Go from Step 1a to Step 1b
+  if (goToStep2Btn) {
+    goToStep2Btn.addEventListener('click', () => {
+      const latInput = shadow.querySelector(`#latitude-${containerId}`);
+      const lngInput = shadow.querySelector(`#longitude-${containerId}`);
+      const locInput = shadow.querySelector(`#location-${containerId}`);
+      const feedback = shadow.querySelector(`#locationFeedback-${containerId}`);
+
+      if ((!latInput || !latInput.value) && (!locInput || !locInput.value.trim())) {
+        if (feedback) {
+          feedback.textContent = '⚠️ Por favor busca una dirección o selecciona una capital.';
+          feedback.style.color = '#dc2626';
+        }
+        if (locInput) locInput.focus();
+        return;
+      }
+
+      // Auto-detect country if address has hints
+      const address = (locInput && locInput.value) ? locInput.value.toLowerCase() : '';
+      if (address.includes('guatemala') || address.includes(', gt')) {
+        applyCountryVisuals({
+          country: 'Guatemala',
+          countryName: 'Guatemala',
+          flag: '🇬🇹',
+          currency: 'GTQ',
+          symbol: 'Q',
+          priceKwh: 1.60,
+          minBill: 150,
+          maxBill: 3500,
+          defaultBill: 600
+        });
+      } else if (address.includes('colombia') || address.includes('bogot') || address.includes(', co')) {
+        applyCountryVisuals({
+          country: 'Colombia',
+          countryName: 'Colombia',
+          flag: '🇨🇴',
+          currency: 'COP',
+          symbol: '$',
+          priceKwh: 986,
+          minBill: 80000,
+          maxBill: 2000000,
+          defaultBill: 350000
+        });
+      } else if (address.includes('españa') || address.includes('madrid') || address.includes(', es')) {
+        applyCountryVisuals({
+          country: 'Spain',
+          countryName: 'España',
+          flag: '🇪🇸',
+          currency: 'EUR',
+          symbol: '€',
+          priceKwh: 0.20,
+          minBill: 20,
+          maxBill: 400,
+          defaultBill: 75
+        });
+      }
+
+      showStep('step1b');
+    });
+  }
+
+  // Navigation: Back from Step 1b to Step 1a
+  if (backToStep1aBtn) {
+    backToStep1aBtn.addEventListener('click', () => {
+      showStep('step1a');
+    });
   }
 
   function formatCurrency(amount, currency = 'EUR') {
@@ -1314,41 +1606,32 @@
     const panelTypeInput = shadow.getElementById(`panelType-${containerId}`);
 
     const formData = {
-      consumption: consumptionInput.value,
-      location: locationInput.value,
-      latitude: latitudeInput.value,
-      longitude: longitudeInput.value,
-      polygonCoordinates: polygonInput.value,
+      consumption: consumptionInput ? consumptionInput.value : '350',
+      location: locationInput ? locationInput.value : '',
+      latitude: latitudeInput ? latitudeInput.value : '',
+      longitude: longitudeInput ? longitudeInput.value : '',
+      polygonCoordinates: polygonInput ? polygonInput.value : '',
       averagePricePerKWh: averagePriceInput && averagePriceInput.value ? averagePriceInput.value : undefined,
-      averagePriceCurrency: averagePriceCurrencyInput && averagePriceCurrencyInput.value ? averagePriceCurrencyInput.value : 'EUR',
-      panelApplication: panelApplicationInput.value,
-      panelType: panelTypeInput.value,
+      averagePriceCurrency: averagePriceCurrencyInput && averagePriceCurrencyInput.value ? averagePriceCurrencyInput.value : currentCountryInfo.currency,
+      panelApplication: panelApplicationInput ? panelApplicationInput.value : 'RESIDENCIAL',
+      panelType: panelTypeInput ? panelTypeInput.value : 'NORMAL',
       selectedSegmentIndices: selectedSegmentIndices && selectedSegmentIndices.length > 0 ? selectedSegmentIndices : undefined,
       origin: window.location.origin,
       pathname: window.location.pathname,
       referrer: document.referrer || null
     };
 
-    // Debug: Log the form data being sent
     console.log('[EMBED] Form data being sent:', formData);
 
-    // Check for missing required fields with detailed validation
     const validationErrors = [];
-
     if (!formData.consumption || formData.consumption.trim() === '') {
       validationErrors.push('Consumo mensual es obligatorio');
     }
-
     if (!formData.location || formData.location.trim() === '') {
       validationErrors.push('Ubicación es obligatoria');
     }
-
-    if (!formData.latitude || formData.latitude.trim() === '') {
-      validationErrors.push('Coordenadas no detectadas - por favor selecciona una ubicación del menú desplegable o usa el botón de geolocalización 📍');
-    }
-
-    if (!formData.longitude || formData.longitude.trim() === '') {
-      validationErrors.push('Coordenadas no detectadas - por favor selecciona una ubicación del menú desplegable o usa el botón de geolocalización 📍');
+    if (!formData.latitude || formData.latitude.trim() === '' || !formData.longitude || formData.longitude.trim() === '') {
+      validationErrors.push('Coordenadas no detectadas - por favor selecciona una capital o busca en el mapa');
     }
 
     if (validationErrors.length > 0) {
@@ -1356,44 +1639,35 @@
       throw new Error(validationErrors.join('. '));
     }
 
-    try {
-      const response = await fetch(`${apiOrigin}/api/embed/calculate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': backendApiKey
-        },
-        body: JSON.stringify(formData),
-      });
+    const response = await fetch(`${apiOrigin}/api/embed/calculate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': backendApiKey
+      },
+      body: JSON.stringify(formData),
+    });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Error en el servidor');
-      }
-
-      return result.solarData;
-    } catch (error) {
-      console.error('Error calculating solar data:', error);
-      throw error;
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error(result.message || 'Error en el servidor');
     }
+
+    return result.solarData;
   }
 
   // Update summary display
   function updateSummaryDisplay(data) {
-    // Debug: Log the entire data object to see what we're receiving
     console.log('[EMBED] updateSummaryDisplay received data:', data);
-    console.log('[EMBED] orthophotoUrl value:', data.orthophotoUrl);
 
     const panels = data.panelsCount || 0;
     const production = data.yearlyEnergyDcKwh || data.annualProduction || 0;
     const savings = data.estimatedAnnualSavingsAmount || 0;
     const cost = data.estimatedInstallationCostAmount || data.totalCost || 0;
-    const currency = data.currencyCode || 'EUR';
-    const averagePrice = data.averagePricePerKWh !== undefined && data.averagePricePerKWh !== null ? data.averagePricePerKWh : 0.20;
+    const currency = data.currencyCode || currentCountryInfo.currency || 'EUR';
+    const averagePrice = data.averagePricePerKWh !== undefined && data.averagePricePerKWh !== null ? data.averagePricePerKWh : currentCountryInfo.priceKwh;
     const averagePriceCurrency = data.averagePriceCurrency || currency;
 
-    // Display orthophoto if available
     let photoContainer = shadow.getElementById(`summaryPhoto-${containerId}`);
     if (!photoContainer) {
       photoContainer = document.createElement('div');
@@ -1402,10 +1676,8 @@
       shadow.getElementById(`summaryContent-${containerId}`).insertBefore(photoContainer, shadow.getElementById(`summaryContent-${containerId}`).firstChild);
     }
     if (data.orthophotoUrl) {
-      console.log('[EMBED] Displaying preloaded orthophoto image:', data.orthophotoUrl);
       photoContainer.innerHTML = `<img src="${data.orthophotoUrl}" alt="Vista aérea" style="width:100%;border-radius:12px;max-height:300px;object-fit:cover;" />`;
     } else {
-      console.log('[EMBED] No orthophotoUrl found, clearing photo container');
       photoContainer.innerHTML = '';
     }
 
@@ -1414,7 +1686,6 @@
     shadow.getElementById(`summarySavings-${containerId}`).textContent = formatCurrency(savings, currency);
     shadow.getElementById(`summaryCost-${containerId}`).textContent = formatCurrency(cost, currency);
 
-    // Render roof segments (vertientes) if available
     let segmentsContainer = shadow.getElementById(`roofSegmentsContainer-${containerId}`);
     if (!segmentsContainer) {
       segmentsContainer = document.createElement('div');
@@ -1469,7 +1740,6 @@
 
       segmentsContainer.innerHTML = segmentsHtml;
 
-      // Attach event listeners to checkboxes for dynamic recalculation
       const checkboxes = segmentsContainer.querySelectorAll(`.solar-calc__segment-checkbox-${containerId}`);
       checkboxes.forEach(cb => {
         cb.addEventListener('change', async () => {
@@ -1477,10 +1747,7 @@
             .filter(c => c.checked)
             .map(c => parseInt(c.value, 10));
 
-          console.log('[EMBED] Recalculating with selected segment indices:', selectedIndices);
-
           try {
-            // Show loading state briefly
             shadow.getElementById(`summaryPanels-${containerId}`).textContent = '...';
             shadow.getElementById(`summaryProduction-${containerId}`).textContent = '...';
             shadow.getElementById(`summarySavings-${containerId}`).textContent = '...';
@@ -1490,7 +1757,7 @@
             solarData = updatedSolarData;
             updateSummaryDisplay(solarData);
           } catch (err) {
-            console.error('[EMBED] Error recalculating segments:', err);
+            console.error('Segment recalculation error:', err);
           }
         });
       });
@@ -1499,7 +1766,6 @@
       segmentsContainer.innerHTML = '';
     }
 
-    // Add or update a display for the average price used
     let priceInfo = shadow.getElementById(`summaryAveragePrice-${containerId}`);
     if (!priceInfo) {
       priceInfo = document.createElement('div');
@@ -1508,100 +1774,89 @@
       shadow.getElementById(`summaryContent-${containerId}`).appendChild(priceInfo);
     }
     const currSymbol = averagePriceCurrency === 'COP' ? '$' : (averagePriceCurrency === 'GTQ' ? 'Q ' : '€');
-    priceInfo.textContent = `Tarifa media de coste de electricidad utilizada: ${currSymbol}${averagePrice} / kWh`;
+    priceInfo.textContent = `Tarifa media de electricidad utilizada: ${currSymbol}${averagePrice} / kWh`;
   }
 
-  // Step 1: Calculate button click
+  // Calculate Button Click with Satellite Scanner Animation
   calculateButton.addEventListener('click', async (e) => {
     e.preventDefault();
 
-    // Validate form
-    if (!form.checkValidity()) {
-      form.reportValidity();
-      return;
-    }
+    const scannerModal = shadow.querySelector(`#scannerModal-${containerId}`);
+    const scannerStatus = shadow.querySelector(`#scannerStatusText-${containerId}`);
+    const scannerSub = shadow.querySelector(`#scannerSubText-${containerId}`);
+    const scannerProgress = shadow.querySelector(`#scannerProgressBar-${containerId}`);
 
-    calculateButton.classList.add('loading');
-    calculateButton.disabled = true;
+    if (scannerModal) scannerModal.style.display = 'flex';
+    if (scannerProgress) scannerProgress.style.width = '25%';
 
     try {
-      showStep(2);
+      // Phase 1: Satellite search
+      if (scannerStatus) scannerStatus.textContent = 'Localizando edificio y tejado vía satélite...';
+      if (scannerSub) scannerSub.textContent = 'Analizando imágenes ortofoto de alta resolución';
+      if (scannerProgress) scannerProgress.style.width = '45%';
 
-      // Fetch solar data first
-      solarData = await calculateSolarData();
+      const fetchPromise = calculateSolarData();
 
-      // Wait for image to be ready if there's an orthophoto URL
+      // Phase 2: Radiation and angle
+      setTimeout(() => {
+        if (scannerStatus) scannerStatus.textContent = 'Calculando radiación solar y sombras...';
+        if (scannerSub) scannerSub.textContent = 'Consultando base de datos climática Google Solar & PVGIS';
+        if (scannerProgress) scannerProgress.style.width = '75%';
+      }, 700);
+
+      solarData = await fetchPromise;
+
+      // Phase 3: Financial proposal
+      if (scannerStatus) scannerStatus.textContent = 'Generando informe y estimación de amortización...';
+      if (scannerProgress) scannerProgress.style.width = '100%';
+
       if (solarData.orthophotoUrl) {
-        console.log('[EMBED] Preloading orthophoto before showing results');
-
         try {
           await Promise.race([
-            // Image loading promise
-            new Promise((resolve) => {
+            new Promise(res => {
               const img = new Image();
-
-              img.onload = () => {
-                console.log('[EMBED] Orthophoto preloaded successfully');
-                resolve();
-              };
-
-              img.onerror = () => {
-                console.warn('[EMBED] Failed to preload orthophoto, showing results anyway');
-                resolve(); // Still resolve to show the results without image
-              };
-
+              img.onload = res;
+              img.onerror = res;
               img.src = solarData.orthophotoUrl;
             }),
-            // Timeout promise (10 seconds max)
-            new Promise((resolve) => {
-              setTimeout(() => {
-                console.warn('[EMBED] Image preloading timeout, showing results anyway');
-                resolve();
-              }, 10000);
-            })
+            new Promise(res => setTimeout(res, 6000))
           ]);
-        } catch (imageError) {
-          console.warn('[EMBED] Error preloading image:', imageError);
-          // Continue anyway, updateSummaryDisplay will handle the error
-        }
+        } catch (_) {}
       }
 
-      // Now show the results screen with everything ready
-      shadow.getElementById(`summaryLoading-${containerId}`).style.display = 'none';
-      shadow.getElementById(`summaryContent-${containerId}`).style.display = 'block';
-      shadow.getElementById(`continueToContact-${containerId}`).style.display = 'block';
+      setTimeout(() => {
+        if (scannerModal) scannerModal.style.display = 'none';
+        showStep('step2');
 
-      updateSummaryDisplay(solarData);
+        shadow.getElementById(`summaryLoading-${containerId}`).style.display = 'none';
+        shadow.getElementById(`summaryContent-${containerId}`).style.display = 'block';
+        shadow.getElementById(`continueToContact-${containerId}`).style.display = 'block';
+
+        updateSummaryDisplay(solarData);
+      }, 400);
 
     } catch (error) {
-      console.error('Error:', error);
-      const errorMessage = document.createElement('p');
-      errorMessage.className = 'solar-calc__error';
-      errorMessage.textContent = error.message || 'Error al calcular los datos solares. Por favor, intente nuevamente.';
-      shadow.getElementById(`summaryContent-${containerId}`).appendChild(errorMessage);
-      shadow.getElementById(`summaryLoading-${containerId}`).style.display = 'none';
-    } finally {
-      calculateButton.classList.remove('loading');
-      calculateButton.disabled = false;
+      console.error('Error in calculate:', error);
+      if (scannerModal) scannerModal.style.display = 'none';
+      alert(error.message || 'Error al calcular los datos solares. Por favor, revisa la ubicación.');
     }
   });
 
   // Step 2: Continue to contact form
   continueButton.addEventListener('click', () => {
-    showStep(3);
+    showStep('step3');
   });
 
   // Back buttons
   backToFormButton.addEventListener('click', () => {
-    showStep(1);
-    // Reset summary display
+    showStep('step1b');
     shadow.getElementById(`summaryLoading-${containerId}`).style.display = 'block';
     shadow.getElementById(`summaryContent-${containerId}`).style.display = 'none';
     shadow.getElementById(`continueToContact-${containerId}`).style.display = 'none';
   });
 
   backToSummaryButton.addEventListener('click', () => {
-    showStep(2);
+    showStep('step2');
   });
 
   // Currency change handler - update placeholder based on selected currency
