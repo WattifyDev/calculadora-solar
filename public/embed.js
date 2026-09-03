@@ -2226,18 +2226,8 @@
         let polyMinY = Infinity, polyMaxY = -Infinity;
 
         if (Array.isArray(userPoly) && userPoly.length >= 3) {
-          // Raw meter offsets of vertices relative to center
-          const rawOffsets = userPoly.map(pt => toMetersOffset(pt.lat, pt.lng));
-          const avgOffX = rawOffsets.reduce((sum, p) => sum + p.x, 0) / rawOffsets.length;
-          const avgOffY = rawOffsets.reduce((sum, p) => sum + p.y, 0) / rawOffsets.length;
-
-          // Since the orthophoto center was queried exactly at the centroid of this polygon,
-          // the polygon's visual center on the image is at the exact center of the canvas!
-          // This eliminates any lat/lng geodesic projection drift.
-          const polyPts = rawOffsets.map(p => ({
-            x: (canvas.width / 2) + ((p.x - avgOffX) * pixelsPerMeter),
-            y: (canvas.height / 2) + ((p.y - avgOffY) * pixelsPerMeter)
-          }));
+          // Map user polygon vertices to exact canvas pixel coordinates using identical projection as panels
+          const polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
 
           ctx.save();
           ctx.beginPath();
@@ -2254,7 +2244,6 @@
           ctx.fill();
           ctx.restore();
 
-          // Calculate poly center and bounds in pixels
           let sumX = 0, sumY = 0;
           for (const pt of polyPts) {
             sumX += pt.x;
@@ -2264,7 +2253,7 @@
             if (pt.y < polyMinY) polyMinY = pt.y;
             if (pt.y > polyMaxY) polyMaxY = pt.y;
           }
-          polyCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+          polyCenter = { x: sumX / polyPts.length, y: sumY / polyPts.length };
         }
 
         // Count how many panels should be drawn: dynamically sum active segments if selected, or use panelsCount
