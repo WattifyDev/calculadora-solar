@@ -389,9 +389,7 @@ export async function POST(request: Request) {
                     params: {
                         latlng: { lat: latitude, lng: longitude },
                         key: googleMapsApiKey,
-                        language: Language.es,
-                        result_type: [AddressType.street_address, AddressType.route, AddressType.locality, AddressType.political],
-                        location_type: [ReverseGeocodingLocationType.ROOFTOP, ReverseGeocodingLocationType.RANGE_INTERPOLATED, ReverseGeocodingLocationType.GEOMETRIC_CENTER]
+                        language: 'es' as Language,
                     },
                 });
 
@@ -801,7 +799,7 @@ export async function POST(request: Request) {
 
 
             // Extract city from address_components
-            const addressComponents = geocodeResponse.data.results[0]?.address_components;
+            const addressComponents = geocodeResponse?.data?.results?.[0]?.address_components;
             if (addressComponents) {
                 for (const component of addressComponents) {
                     if (component.types.includes(AddressType.locality)) {
@@ -811,14 +809,10 @@ export async function POST(request: Request) {
                 }
             }
         } catch (error) {
-            console.error('[CALC] Geocoding error:', error);
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: 'Error al validar la ubicación'
-                },
-                { status: 400, headers: cors }
-            );
+            console.error('[CALC] Geocoding error (continuing with default Spain):', error);
+            // Non-blocking fallback: default to Spain/EUR if coordinates were already validated
+            city = city || 'España';
+            enforcedCurrency = 'EUR';
         }
 
         // Determine final currency - respect user choice if provided, otherwise use country-based enforcement
