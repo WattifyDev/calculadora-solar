@@ -204,6 +204,7 @@ export function extractRoofSegments(
             performanceGrade: perf.grade,
             performanceLabel: perf.label,
             efficiencyPercentage: perf.efficiencyPercentage,
+            center: stat.center ? { latitude: stat.center.latitude, longitude: stat.center.longitude } : undefined,
             isRecommended: false,
             isSelected: false,
         };

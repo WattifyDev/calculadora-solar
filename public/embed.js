@@ -2217,6 +2217,9 @@
         // Draw the user marked polygon roof outline subtly
         const userPoly = data.userPolygon;
         let polyCenter = null;
+        let polyMinX = Infinity, polyMaxX = -Infinity;
+        let polyMinY = Infinity, polyMaxY = -Infinity;
+
         if (Array.isArray(userPoly) && userPoly.length >= 3) {
           const polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
           ctx.save();
@@ -2226,7 +2229,7 @@
             ctx.lineTo(polyPts[i].x, polyPts[i].y);
           }
           ctx.closePath();
-          ctx.strokeStyle = 'rgba(203, 255, 84, 0.7)';
+          ctx.strokeStyle = 'rgba(203, 255, 84, 0.75)';
           ctx.lineWidth = 2;
           ctx.setLineDash([4, 4]);
           ctx.stroke();
@@ -2234,10 +2237,17 @@
           ctx.fill();
           ctx.restore();
 
-          // Calculate poly center in pixels
-          const avgPxX = polyPts.reduce((sum, p) => sum + p.x, 0) / polyPts.length;
-          const avgPxY = polyPts.reduce((sum, p) => sum + p.y, 0) / polyPts.length;
-          polyCenter = { x: avgPxX, y: avgPxY };
+          // Calculate poly center and bounds in pixels
+          let sumX = 0, sumY = 0;
+          for (const pt of polyPts) {
+            sumX += pt.x;
+            sumY += pt.y;
+            if (pt.x < polyMinX) polyMinX = pt.x;
+            if (pt.x > polyMaxX) polyMaxX = pt.x;
+            if (pt.y < polyMinY) polyMinY = pt.y;
+            if (pt.y > polyMaxY) polyMaxY = pt.y;
+          }
+          polyCenter = { x: sumX / polyPts.length, y: sumY / polyPts.length };
         }
 
         // Count how many panels should be drawn: dynamically sum active segments if selected, or use panelsCount
@@ -2257,11 +2267,11 @@
         // Panel real physical dimensions: ~1.05m x ~1.75m
         const pWidthMeters = 1.05;
         const pHeightMeters = 1.75;
-        const pWidthPx = Math.max(5, Math.round(pWidthMeters * pixelsPerMeter));
-        const pHeightPx = Math.max(9, Math.round(pHeightMeters * pixelsPerMeter));
+        let pWidthPx = Math.max(4, Math.round(pWidthMeters * pixelsPerMeter));
+        let pHeightPx = Math.max(7, Math.round(pHeightMeters * pixelsPerMeter));
 
         // Draw a single realistic solar panel
-        const drawSinglePanel = (x, y, rotationRad = 0) => {
+        const drawSinglePanel = (x, y, rotationRad = 0, width = pWidthPx, height = pHeightPx) => {
           ctx.save();
           ctx.translate(x, y);
           if (rotationRad) ctx.rotate(rotationRad);
@@ -2269,21 +2279,21 @@
           // Panel background - Photovoltaic cell dark blue glass
           ctx.fillStyle = '#063231';
           ctx.strokeStyle = '#CBFF54';
-          ctx.lineWidth = 1.2;
+          ctx.lineWidth = 1.1;
           ctx.shadowColor = 'rgba(203, 255, 84, 0.4)';
           ctx.shadowBlur = 2;
 
           ctx.beginPath();
-          ctx.roundRect(-pWidthPx / 2, -pHeightPx / 2, pWidthPx, pHeightPx, 1);
+          ctx.roundRect(-width / 2, -height / 2, width, height, 1);
           ctx.fill();
           ctx.stroke();
 
           // Glass reflection line
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-          ctx.lineWidth = 0.8;
+          ctx.lineWidth = 0.7;
           ctx.beginPath();
-          ctx.moveTo(-pWidthPx / 2 + 1, 0);
-          ctx.lineTo(pWidthPx / 2 - 1, 0);
+          ctx.moveTo(-width / 2 + 1, 0);
+          ctx.lineTo(width / 2 - 1, 0);
           ctx.stroke();
 
           ctx.restore();
@@ -2291,24 +2301,57 @@
 
         // Determine orientation angle (from dominant selected roof segment or 0)
         let roofAzimuthRad = 0;
+        let dominantSeg = null;
         if (data.roofSegments && data.roofSegments.length > 0) {
-          const dominantSeg = data.roofSegments.find(s => activeSegments.includes(s.segmentIndex)) || data.roofSegments[0];
+          dominantSeg = data.roofSegments.find(s => activeSegments.includes(s.segmentIndex)) || data.roofSegments[0];
           if (dominantSeg && dominantSeg.azimuthDegrees !== undefined) {
             roofAzimuthRad = ((dominantSeg.azimuthDegrees - 180) * Math.PI) / 180;
           }
         }
 
-        // Anchor center: User polygon center if exists, otherwise center of canvas
-        const anchorX = polyCenter ? polyCenter.x : canvas.width / 2;
-        const anchorY = polyCenter ? polyCenter.y : canvas.height / 2;
+        // Anchor center:
+        // If the dominant segment provides a GPS center, use it!
+        // Otherwise, if user marked a polygon, calculate position on the active slope (Sur = +Y down in canvas, Norte = -Y up in canvas)
+        let anchorX = canvas.width / 2;
+        let anchorY = canvas.height / 2;
 
-        // Build a clean, modular grid array of panels (side by side in neat rows and columns)
+        if (dominantSeg && dominantSeg.center && dominantSeg.center.latitude && dominantSeg.center.longitude) {
+          const segCoords = toCanvasCoords(dominantSeg.center.latitude, dominantSeg.center.longitude);
+          anchorX = segCoords.x;
+          anchorY = segCoords.y;
+        } else if (polyCenter) {
+          anchorX = polyCenter.x;
+          // If slope is South (~180°), the southern slope is towards the bottom (+Y) of the polygon
+          const isSouthSlope = dominantSeg ? (dominantSeg.azimuthDegrees >= 110 && dominantSeg.azimuthDegrees <= 250) : true;
+          const polyHeight = polyMaxY - polyMinY;
+          if (isSouthSlope && polyHeight > 0) {
+            anchorY = polyCenter.y + (polyHeight * 0.22); // Shift downwards to sit squarely on South slope
+          } else if (polyHeight > 0) {
+            anchorY = polyCenter.y - (polyHeight * 0.22); // Shift upwards for North slope
+          } else {
+            anchorY = polyCenter.y;
+          }
+        }
+
+        // Calculate available width inside the polygon (or 80% of roof width)
+        const availRoofWidthPx = (polyMaxX > polyMinX) ? (polyMaxX - polyMinX) * 0.85 : (canvas.width * 0.45);
+        const availRoofHeightPx = (polyMaxY > polyMinY) ? ((polyMaxY - polyMinY) / 2) * 0.85 : (canvas.height * 0.25);
+
+        // Build elongated grid: realistic roofs place panels in elongated bands (2 to 3 rows)
+        let rows = targetPanelCount > 18 ? 3 : (targetPanelCount > 8 ? 2 : 1);
+        let cols = Math.ceil(targetPanelCount / rows);
+
+        // Fit panels into available slope bounds if needed
+        const totalGridWidth = cols * (pWidthPx + 2);
+        const totalGridHeight = rows * (pHeightPx + 2);
+        if (totalGridWidth > availRoofWidthPx && availRoofWidthPx > 0) {
+          const scaleRatio = availRoofWidthPx / totalGridWidth;
+          pWidthPx = Math.max(3, Math.round(pWidthPx * scaleRatio));
+          pHeightPx = Math.max(6, Math.round(pHeightPx * scaleRatio));
+        }
+
         const spacingX = pWidthPx + 2;
         const spacingY = pHeightPx + 2;
-
-        // Columns and rows arranged proportionally
-        let cols = Math.min(Math.max(3, Math.ceil(Math.sqrt(targetPanelCount * 1.3))), 8);
-        let rows = Math.ceil(targetPanelCount / cols);
 
         let drawn = 0;
         const startOffsetX = -((cols - 1) * spacingX) / 2;
@@ -2331,10 +2374,11 @@
             const finalX = anchorX + rotX;
             const finalY = anchorY + rotY;
 
-            drawSinglePanel(finalX, finalY, roofAzimuthRad);
+            drawSinglePanel(finalX, finalY, roofAzimuthRad, pWidthPx, pHeightPx);
             drawn++;
           }
         }
+      };
       };
 
       canvas._drawOverlay = drawOverlay;

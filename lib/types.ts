@@ -133,6 +133,7 @@ export interface RoofSegmentDetails {
   efficiencyPercentage: number;
   isSelected: boolean;
   isRecommended?: boolean;
+  center?: { latitude: number; longitude: number };
 }
 
 // New interface for googleSolarData content, including Google Solar fields
