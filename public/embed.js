@@ -2180,78 +2180,97 @@
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Check if we have Google Solar panels array
         const panels = data.solarPanels;
         const activeSegments = data.roofSegments
           ? data.roofSegments.filter(s => s.isSelected !== false && s.selected !== false).map(s => s.segmentIndex)
           : [];
 
         if (panels && Array.isArray(panels) && panels.length > 0) {
-          // Find bounding box of all panels to project coordinates to canvas
-          let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
-          panels.forEach(p => {
-            const lat = p.center?.latitude ?? p.latitude;
-            const lng = p.center?.longitude ?? p.longitude;
-            if (lat && lng) {
-              minLat = Math.min(minLat, lat);
-              maxLat = Math.max(maxLat, lat);
-              minLng = Math.min(minLng, lng);
-              maxLng = Math.max(maxLng, lng);
+          // Find building center from Google Solar or centroid of panels
+          let centerLat = data.center?.latitude || data.boundingBox?.center?.latitude;
+          let centerLng = data.center?.longitude || data.boundingBox?.center?.longitude;
+
+          if (!centerLat || !centerLng) {
+            let sumLat = 0, sumLng = 0, count = 0;
+            panels.forEach(p => {
+              const lat = p.center?.latitude ?? p.latitude;
+              const lng = p.center?.longitude ?? p.longitude;
+              if (lat && lng) {
+                sumLat += lat;
+                sumLng += lng;
+                count++;
+              }
+            });
+            if (count > 0) {
+              centerLat = sumLat / count;
+              centerLng = sumLng / count;
             }
-          });
+          }
 
-          // Add margin around bounding box to align with roof center
-          const latMargin = Math.max((maxLat - minLat) * 0.45, 0.00015);
-          const lngMargin = Math.max((maxLng - minLng) * 0.45, 0.00015);
-          minLat -= latMargin; maxLat += latMargin;
-          minLng -= lngMargin; maxLng += lngMargin;
+          // In Google Solar dataLayers API with radiusMeters = 50, the image shows a 100m x 100m area centered at the queried coordinates.
+          // Degrees to meters: 1 deg lat ≈ 111,139 meters. 1 deg lng ≈ 111,139 * cos(lat) meters.
+          const latMetersPerDeg = 111139;
+          const lngMetersPerDeg = 111139 * Math.cos((centerLat || 40.4) * (Math.PI / 180));
 
-          const latSpan = maxLat - minLat || 1;
-          const lngSpan = maxLng - minLng || 1;
+          // Calculate visible extent in meters from canvas (100m total box by default for 50m radius)
+          const totalRadiusMeters = 50;
+          const totalBoxMeters = totalRadiusMeters * 2; // 100 meters
+
+          // Actual physical size of standard solar panel: ~1.75m x ~1.05m
+          const panelLengthMeters = data.panelHeightMeters || 1.75;
+          const panelWidthMeters = data.panelWidthMeters || 1.05;
+
+          const pixelsPerMeterX = canvas.width / totalBoxMeters;
+          const pixelsPerMeterY = canvas.height / totalBoxMeters;
+
+          const pWidthPx = Math.max(5, panelWidthMeters * pixelsPerMeterX);
+          const pLengthPx = Math.max(9, panelLengthMeters * pixelsPerMeterY);
 
           panels.forEach(panel => {
             const segIdx = panel.segmentIndex ?? 0;
-            // Only draw if segment is selected
             if (activeSegments.length > 0 && !activeSegments.includes(segIdx)) return;
 
             const lat = panel.center?.latitude ?? panel.latitude;
             const lng = panel.center?.longitude ?? panel.longitude;
-            if (!lat || !lng) return;
+            if (!lat || !lng || !centerLat || !centerLng) return;
 
-            // Project to canvas coordinates
-            const x = ((lng - minLng) / lngSpan) * canvas.width;
-            const y = ((maxLat - lat) / latSpan) * canvas.height; // Invert latitude
+            // Offset from center in meters
+            const deltaX = (lng - centerLng) * lngMetersPerDeg; // East-West meters (positive East)
+            const deltaY = (lat - centerLat) * latMetersPerDeg; // North-South meters (positive North)
 
-            // Panel dimensions
-            const pW = Math.max(8, canvas.width * 0.024);
-            const pH = Math.max(14, canvas.height * 0.042);
+            // Canvas center is (width / 2, height / 2)
+            const canvasX = (canvas.width / 2) + (deltaX * pixelsPerMeterX);
+            const canvasY = (canvas.height / 2) - (deltaY * pixelsPerMeterY); // Invert Y (North is up)
+
+            // Only draw if within bounds
+            if (canvasX < -20 || canvasX > canvas.width + 20 || canvasY < -20 || canvasY > canvas.height + 20) return;
 
             ctx.save();
-            ctx.translate(x, y);
+            ctx.translate(canvasX, canvasY);
 
-            // Rotate slightly or according to orientation
+            // Rotate panel: If LANDSCAPE rotate 90 degrees
             if (panel.orientation === 'LANDSCAPE') {
               ctx.rotate(Math.PI / 2);
             }
 
-            // Photovoltaic cell look: Blue glass with neon border
-            ctx.fillStyle = 'rgba(2, 132, 199, 0.85)';
+            // Photovoltaic cell look: Dark blue glass with neon Wattify border
+            ctx.fillStyle = 'rgba(14, 116, 144, 0.88)';
             ctx.strokeStyle = '#CBFF54';
             ctx.lineWidth = 1.2;
-            ctx.shadowColor = 'rgba(203, 255, 84, 0.5)';
-            ctx.shadowBlur = 4;
+            ctx.shadowColor = 'rgba(203, 255, 84, 0.6)';
+            ctx.shadowBlur = 3;
 
             ctx.beginPath();
-            ctx.roundRect(-pW / 2, -pH / 2, pW, pH, 1.5);
+            ctx.roundRect(-pWidthPx / 2, -pLengthPx / 2, pWidthPx, pLengthPx, 1);
             ctx.fill();
             ctx.stroke();
 
-            // Inner cell reflection line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            // Inner silicon reflection line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 0.8;
             ctx.beginPath();
-            ctx.moveTo(-pW / 2 + 1, 0);
-            ctx.lineTo(pW / 2 - 1, 0);
+            ctx.moveTo(-pWidthPx / 2 + 0.5, 0);
+            ctx.lineTo(pWidthPx / 2 - 0.5, 0);
             ctx.stroke();
 
             ctx.restore();
@@ -2294,9 +2313,7 @@
           <div style="display: flex; gap: 8px; align-items: flex-start;">
             <span style="font-size: 16px; flex-shrink: 0;">💡</span>
             <div>
-              <strong>¿Cómo funcionan las vertientes?</strong> Cada vertiente representa una caída o área física independiente de tu cubierta. 
-              <strong>Puedes marcar varias o todas a la vez</strong> sin que se superpongan. 
-              Te recomendamos priorizar las de <strong style="color: #15803d;">Grado A (Sur/Sudoeste)</strong> y <strong style="color: #0369a1;">Grado B (Este/Sudeste)</strong> para máxima rentabilidad.
+              <strong>¿Cómo funcionan las vertientes?</strong> Cada vertiente representa una caída o área física independiente de tu cubierta. <strong>Puedes marcar varias o todas a la vez</strong> sin que se superpongan. Te recomendamos priorizar las de <span style="color: #15803d; font-weight: 600;">Grado A (Sur/Sudoeste)</span> y <span style="color: #0284c7; font-weight: 600;">Grado B (Este/Sudeste)</span> para máxima rentabilidad.
             </div>
           </div>
         </div>
@@ -2323,10 +2340,10 @@
               />
               <div style="text-align: left;">
                 <div style="font-weight: 600; font-size: 14px; color: #1e293b;">
-                  Vertiente ${idx + 1}: ${orientationLabel} (${Math.round(seg.azimuthDegrees)}°)
+                  Vertiente ${idx + 1}: ${orientationLabel} (${Math.round(seg.azimuthDegrees || 0)}°)
                 </div>
                 <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                  Inclinación ${pitch}° • ${segPanels} paneles (${area} m²)
+                  Inclinación ${pitch}° • <strong>${segPanels} paneles</strong> (${area} m²)
                 </div>
               </div>
             </div>
@@ -2346,23 +2363,22 @@
             .filter(c => c.checked)
             .map(c => parseInt(c.value, 10));
 
-          // Create or show the recalculation popup
+          // Create or show the recalculation popup attached to the main dialog container
           let recalcPopup = shadow.getElementById(`recalcPopup-${containerId}`);
           if (!recalcPopup) {
             recalcPopup = document.createElement('div');
             recalcPopup.id = `recalcPopup-${containerId}`;
-            recalcPopup.style.cssText = 'position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #ffffff; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 1000; display: flex; align-items: center; gap: 10px; border: 1.5px solid #CBFF54; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; pointer-events: none;';
-            const modalBody = shadow.querySelector('.solar-calc__body') || shadow.querySelector('.solar-calc__wrapper');
-            if (modalBody) {
-              modalBody.style.position = 'relative';
-              modalBody.appendChild(recalcPopup);
+            recalcPopup.style.cssText = 'position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-10px); background: #063231; color: #ffffff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 36px rgba(0,0,0,0.35); z-index: 999999; display: flex; align-items: center; gap: 10px; border: 2px solid #CBFF54; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; pointer-events: none;';
+            const outerContainer = shadow.querySelector('.solar-calc__container') || shadow.querySelector('.solar-calc__dialog') || shadow;
+            if (outerContainer) {
+              outerContainer.appendChild(recalcPopup);
             }
           }
 
           if (recalcPopup) {
             recalcPopup.innerHTML = `
-              <span style="font-size: 16px; animation: spin 0.8s linear infinite; display: inline-block;">⚡</span>
-              <span>Modificando cálculos a la velocidad de la luz...</span>
+              <span style="font-size: 18px; animation: spin 0.8s linear infinite; display: inline-block;">⚡</span>
+              <span style="letter-spacing: 0.2px;">Modificando cálculos a la velocidad de la luz...</span>
             `;
             recalcPopup.style.opacity = '1';
             recalcPopup.style.transform = 'translateX(-50%) translateY(0)';

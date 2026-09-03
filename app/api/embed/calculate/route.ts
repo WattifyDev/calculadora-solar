@@ -942,6 +942,8 @@ export async function POST(request: Request) {
                 googleSolarData.solarPanels = solarPotential.solarPanels || [];
                 googleSolarData.panelHeightMeters = solarPotential.panelHeightMeters || 1.8;
                 googleSolarData.panelWidthMeters = solarPotential.panelWidthMeters || 1.0;
+                // Add building center used for orthophoto query to ensure canvas panels overlay perfectly
+                (googleSolarData as any).center = { latitude, longitude };
                 // Get building bounding box from first segment or calculate from panels
                 if (solarPotential.roofSegmentStats && solarPotential.roofSegmentStats.length > 0) {
                     const firstBox = solarPotential.roofSegmentStats[0].boundingBox;
@@ -1003,10 +1005,12 @@ export async function POST(request: Request) {
                                 const kwhPerPanelPerYear = (panelWattage / 1000) * 1200; // Conservative production estimate
                                 const panelsNeededByConsumption = Math.ceil(annualConsumption / kwhPerPanelPerYear);
 
-                                // Use the minimum of area-limited, consumption-based, and selected segments limits
-                                let calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
+                                // If the user explicitly selected specific vertientes, install the full potential of those selected vertientes (up to area limit)
+                                let calculatedPanelsCount: number;
                                 if (maxAllowedPanelsFromSegments < Infinity && maxAllowedPanelsFromSegments > 0) {
-                                    calculatedPanelsCount = Math.min(calculatedPanelsCount, maxAllowedPanelsFromSegments);
+                                    calculatedPanelsCount = Math.min(maxAllowedPanelsFromSegments, maxPanelsByArea);
+                                } else {
+                                    calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
                                 }
 
                                 console.log('[CALC] Panel calculation details:', {
@@ -1203,8 +1207,15 @@ export async function POST(request: Request) {
                             paybackYears
                         };
 
-                        if (!bestAnalysis || currentAnalysis.totalLifetimeSavings > bestAnalysis.totalLifetimeSavings) {
-                            bestAnalysis = currentAnalysis;
+                        // If user filtered roof segments, prefer the config that best utilizes the selected capacity
+                        if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
+                            if (!bestAnalysis || currentAnalysis.panelsCount > bestAnalysis.panelsCount || (currentAnalysis.panelsCount === bestAnalysis.panelsCount && currentAnalysis.totalLifetimeSavings > bestAnalysis.totalLifetimeSavings)) {
+                                bestAnalysis = currentAnalysis;
+                            }
+                        } else {
+                            if (!bestAnalysis || currentAnalysis.totalLifetimeSavings > bestAnalysis.totalLifetimeSavings) {
+                                bestAnalysis = currentAnalysis;
+                            }
                         }
                     }
                     if (bestAnalysis) {
@@ -1229,13 +1240,13 @@ export async function POST(request: Request) {
                     if (solarPotential.maxArrayPanelsCount && solarPotential.maxArrayPanelsCount > 0) {
                         targetPanels = Math.min(targetPanels, solarPotential.maxArrayPanelsCount);
                     }
-                    // Cap to selected segments capacity if user selected specific vertientes
+                    // If user selected specific vertientes, install the full potential of those vertientes
                     if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
                         const selectedCap = roofSegments
                             .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
                             .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
                         if (selectedCap > 0) {
-                            targetPanels = Math.min(targetPanels, selectedCap);
+                            targetPanels = selectedCap;
                         }
                     }
 
