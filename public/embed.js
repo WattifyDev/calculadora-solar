@@ -1335,6 +1335,39 @@
                 </button>
               </div>
             </form>
+
+            <!-- Premium Submission Success Modal (Wattify Satellite Engine style) -->
+            <div id="submissionModal-${containerId}" class="solar-calc__scanner-modal" style="display: none;">
+              <div class="solar-calc__scanner-logo-wrapper">
+                <img src="/wattifylogo.png" alt="Wattify" class="solar-calc__scanner-logo" onerror="this.style.display='none'">
+              </div>
+              <div class="solar-calc__scanner-badge">
+                <span>⚡ WATTIFY SATELLITE ENGINE</span>
+              </div>
+              <div class="solar-calc__radar-box">
+                <div class="solar-calc__radar-circle"></div>
+                <div class="solar-calc__radar-circle-inner"></div>
+                <div class="solar-calc__radar-sweep"></div>
+                <div class="solar-calc__radar-icon-box">
+                  <span class="solar-calc__radar-icon" id="submissionModalIcon-${containerId}">🛰️</span>
+                </div>
+              </div>
+              <div class="solar-calc__scanner-status-text" id="submissionModalTitle-${containerId}">
+                Generando tu estudio solar completo...
+              </div>
+              <div class="solar-calc__scanner-sub-text" id="submissionModalSub-${containerId}">
+                Preparando la memoria técnica con desglose de ahorro en PDF
+              </div>
+              <div class="solar-calc__scanner-progress" id="submissionModalProgressBox-${containerId}">
+                <div class="solar-calc__scanner-bar" id="submissionModalProgressBar-${containerId}"></div>
+              </div>
+              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 18px; width: 100%; max-width: 440px;">
+                <p id="submissionModalConfirmMsg-${containerId}" style="font-size: 13px; color: #334155; line-height: 1.5; margin-bottom: 18px; background: #ffffff; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);"></p>
+                <button type="button" id="submissionModalCloseBtn-${containerId}" class="solar-calc__button solar-calc__button--primary" style="width: 100%; font-weight: 700;">
+                  Finalizar y Volver al Sitio
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2942,6 +2975,24 @@
         referrer: document.referrer || null
       };
 
+      const submissionModal = shadow.querySelector(`#submissionModal-${containerId}`);
+      const modalTitle = shadow.querySelector(`#submissionModalTitle-${containerId}`);
+      const modalSub = shadow.querySelector(`#submissionModalSub-${containerId}`);
+      const modalProgress = shadow.querySelector(`#submissionModalProgressBar-${containerId}`);
+      const modalProgressBox = shadow.querySelector(`#submissionModalProgressBox-${containerId}`);
+      const modalConfirmBox = shadow.querySelector(`#submissionModalConfirmBox-${containerId}`);
+      const modalConfirmMsg = shadow.querySelector(`#submissionModalConfirmMsg-${containerId}`);
+      const modalCloseBtn = shadow.querySelector(`#submissionModalCloseBtn-${containerId}`);
+      const modalIcon = shadow.querySelector(`#submissionModalIcon-${containerId}`);
+
+      if (submissionModal) {
+        submissionModal.style.display = 'flex';
+        submissionModal.classList.add('visible');
+        if (modalProgress) modalProgress.style.width = '30%';
+        if (modalTitle) modalTitle.textContent = 'Generando tu estudio solar completo...';
+        if (modalSub) modalSub.textContent = 'Calculando curva de producción, amortización y ahorro con IA';
+      }
+
       const response = await fetch(`${apiOrigin}/api/embed/submit`, {
         method: 'POST',
         headers: {
@@ -2951,83 +3002,47 @@
         body: JSON.stringify(data),
       });
 
+      if (modalProgress) modalProgress.style.width = '75%';
       const result = await response.json();
 
       if (!response.ok) {
+        if (submissionModal) submissionModal.classList.remove('visible');
         throw new Error(result.message || 'Error en el servidor');
       }
 
-      // Show brief inline success message
-      const successMessage = document.createElement('p');
-      successMessage.textContent = '¡Datos enviados correctamente!';
-      successMessage.style.color = '#059669';
-      successMessage.style.marginTop = '1rem';
-      successMessage.style.padding = '16px';
-      successMessage.style.backgroundColor = '#ecfdf5';
-      successMessage.style.borderRadius = '8px';
-      successMessage.style.border = '1px solid #a7f3d0';
-      contactForm.appendChild(successMessage);
+      if (modalProgress) modalProgress.style.width = '100%';
 
       contactForm.reset();
       form.reset();
 
-      // Manually reset select elements to their first option if form.reset() doesn't do it reliably
-      // (though typically it should)
-      const panelApplicationSelect = shadow.getElementById(`panelApplication-${containerId}`);
-      const panelTypeSelect = shadow.getElementById(`panelType-${containerId}`);
-      if (panelApplicationSelect) panelApplicationSelect.selectedIndex = 0;
-      if (panelTypeSelect) panelTypeSelect.selectedIndex = 0;
-
-      // Display instructional popup before redirecting the user
-      const senderEmail = result.senderEmail || 'InformeCalculadoraSolar';
+      const senderEmail = result.senderEmail || 'info@wattify.es';
       const customerName = data.name || '';
 
-      const popupOverlay = document.createElement('div');
-      popupOverlay.style.position = 'fixed';
-      popupOverlay.style.top = '0';
-      popupOverlay.style.left = '0';
-      popupOverlay.style.width = '100%';
-      popupOverlay.style.height = '100%';
-      popupOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
-      popupOverlay.style.zIndex = '1000000000';
-      popupOverlay.style.display = 'flex';
-      popupOverlay.style.alignItems = 'center';
-      popupOverlay.style.justifyContent = 'center';
+      setTimeout(() => {
+        if (modalTitle) modalTitle.textContent = `¡Estudio preparado con éxito, ${customerName}!`;
+        if (modalSub) modalSub.textContent = 'Hemos enviado tu propuesta técnica personalizada a tu correo';
+        if (modalIcon) modalIcon.textContent = '📩';
+        if (modalProgressBox) modalProgressBox.style.display = 'none';
 
-      const popupBox = document.createElement('div');
-      popupBox.style.backgroundColor = '#ffffff';
-      popupBox.style.padding = '24px';
-      popupBox.style.borderRadius = '12px';
-      popupBox.style.maxWidth = '500px';
-      popupBox.style.boxShadow = '0 4px 20px rgba(0,0,0,0.1)';
-      popupBox.style.fontFamily = 'inherit';
-      popupBox.style.lineHeight = '1.5';
-      popupBox.style.textAlign = 'left';
+        if (modalConfirmBox && modalConfirmMsg) {
+          modalConfirmMsg.innerHTML = `
+            En breve recibirás el informe detallado en formato PDF remitido desde <strong>${senderEmail}</strong>.<br><br>
+            <em>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</em>
+          `;
+          modalConfirmBox.style.display = 'block';
+        }
 
-      popupBox.innerHTML = `
-        <p style="font-size:18px;font-weight:600;margin-bottom:16px;">¡Gracias ${customerName} por usar nuestra Calculadora de aprovechamiento Solar!</p>
-        <p style="margin-bottom:12px;">En breve recibirás un mail con el informe completo desde la dirección <strong>${senderEmail}</strong>. Si en 5-10 minutos no lo has recibido, revisa la carpeta de SPAM para asegurar que recibes la información.</p>
-        <p>Muchas gracias por confiar en Wattify.</p>
-        <button id="popupClose-${containerId}" style="display:block;margin:24px auto 0;background:#22c55e;color:#ffffff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer;">Entendido</button>
-      `;
-
-      popupOverlay.appendChild(popupBox);
-      document.body.appendChild(popupOverlay);
-
-      const popupCloseBtn = document.getElementById(`popupClose-${containerId}`);
-      if (popupCloseBtn) {
-        popupCloseBtn.addEventListener('click', () => {
-          window.location.href = window.location.origin;
-        });
-      } else {
-        // Fallback: auto redirect after 10 seconds if button not found
-        setTimeout(() => {
-          window.location.href = window.location.origin;
-        }, 10000);
-      }
+        if (modalCloseBtn) {
+          modalCloseBtn.addEventListener('click', () => {
+            window.location.href = window.location.origin;
+          });
+        }
+      }, 700);
 
     } catch (error) {
       console.error('Error:', error);
+      const submissionModal = shadow.querySelector(`#submissionModal-${containerId}`);
+      if (submissionModal) submissionModal.classList.remove('visible');
       const errorMessage = document.createElement('p');
       errorMessage.className = 'solar-calc__error';
       errorMessage.textContent = error.message || 'Error al enviar los datos. Por favor, intente nuevamente.';

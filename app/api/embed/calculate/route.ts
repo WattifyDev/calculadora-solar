@@ -937,9 +937,8 @@ export async function POST(request: Request) {
                 const annualKWhEnergyConsumption = calculateAnnualKWhEnergyConsumption(monthlyKWhEnergyConsumption);
                 googleSolarData.averageKwhConsumption = monthlyKWhEnergyConsumption;
                 googleSolarData.monthlyElectricityBillAmount = monthlyKWhEnergyConsumption * averagePrice;
-                console.log('[CALC] Consumption:', { monthlyKWhEnergyConsumption, annualKWhEnergyConsumption });
-
-                const roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices, annualKWhEnergyConsumption);
+                const parsedUserPolygon = data.polygonCoordinates ? (typeof data.polygonCoordinates === 'string' ? JSON.parse(data.polygonCoordinates) : data.polygonCoordinates) : null;
+                const roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices, annualKWhEnergyConsumption, parsedUserPolygon);
                 googleSolarData.roofSegments = roofSegments;
                 googleSolarData.solarPanels = solarPotential.solarPanels || [];
                 googleSolarData.panelHeightMeters = solarPotential.panelHeightMeters || 1.8;
@@ -947,7 +946,7 @@ export async function POST(request: Request) {
                 // Add building center and polygon coordinates used for orthophoto query to ensure canvas panels overlay perfectly
                 (googleSolarData as any).center = { latitude, longitude };
                 (googleSolarData as any).orthoRadiusMeters = 30;
-                (googleSolarData as any).userPolygon = data.polygonCoordinates ? (typeof data.polygonCoordinates === 'string' ? JSON.parse(data.polygonCoordinates) : data.polygonCoordinates) : null;
+                (googleSolarData as any).userPolygon = parsedUserPolygon;
                 // Get building bounding box from first segment or calculate from panels
                 if (solarPotential.roofSegmentStats && solarPotential.roofSegmentStats.length > 0) {
                     const firstBox = solarPotential.roofSegmentStats[0].boundingBox;

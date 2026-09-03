@@ -168,7 +168,8 @@ export function getPerformanceRating(azimuthDegrees: number, pitchDegrees: numbe
 export function extractRoofSegments(
     solarPotential: SolarPotential,
     selectedSegmentIndices?: number[],
-    targetConsumptionKWh?: number
+    targetConsumptionKWh?: number,
+    userPolygon?: { lat: number; lng: number }[]
 ): RoofSegmentDetails[] {
     if (!solarPotential.roofSegmentStats || !Array.isArray(solarPotential.roofSegmentStats)) {
         return [];
@@ -181,6 +182,19 @@ export function extractRoofSegments(
                 panelsBySegment.set(panel.segmentIndex, (panelsBySegment.get(panel.segmentIndex) || 0) + 1);
             }
         }
+    }
+
+    // Helper: Ray casting algorithm to check if a lat/lng point is inside a polygon
+    function isPointInPolygon(point: { latitude: number; longitude: number }, vs: { lat: number; lng: number }[]) {
+        const x = point.longitude, y = point.latitude;
+        let inside = false;
+        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            const xi = vs[i].lng, yi = vs[i].lat;
+            const xj = vs[j].lng, yj = vs[j].lat;
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
     }
 
     // First map all raw segments
@@ -205,21 +219,38 @@ export function extractRoofSegments(
             performanceLabel: perf.label,
             efficiencyPercentage: perf.efficiencyPercentage,
             center: stat.center ? { latitude: stat.center.latitude, longitude: stat.center.longitude } : undefined,
+            boundingBox: stat.boundingBox,
             isRecommended: false,
             isSelected: false,
         };
     });
 
+    // FILTER OUT SEGMENTS OUTSIDE USER-DRAWN ROOF POLYGON:
+    // If the user specified a polygon, discard any segment whose center falls outside the polygon bounds
+    let candidates = allRawSegments;
+    if (userPolygon && Array.isArray(userPolygon) && userPolygon.length >= 3) {
+        const polygonFiltered = candidates.filter(s => {
+            if (s.center) {
+                return isPointInPolygon(s.center, userPolygon);
+            }
+            return true;
+        });
+        // If polygon matching found at least one segment, use strictly those
+        if (polygonFiltered.length > 0) {
+            candidates = polygonFiltered;
+        }
+    }
+
     // FILTER OUT RESIDUAL MICRO-SEGMENTS:
     // Discard chimney caps, micro-eaves, and tiny surfaces (area < 20m² or panels < 6)
     // to present clean, realistic primary roof slopes to the user.
-    let validSegments = allRawSegments.filter(s => s.areaMeters2 >= 20 && s.panelsCount >= 6);
+    let validSegments = candidates.filter(s => s.areaMeters2 >= 20 && s.panelsCount >= 6);
     if (validSegments.length === 0) {
         // Fallback if the building is very small: keep segments with at least 10m² and 4 panels
-        validSegments = allRawSegments.filter(s => s.areaMeters2 >= 10 && s.panelsCount >= 4);
+        validSegments = candidates.filter(s => s.areaMeters2 >= 10 && s.panelsCount >= 4);
     }
     if (validSegments.length === 0) {
-        validSegments = allRawSegments.filter(s => s.panelsCount > 0);
+        validSegments = candidates.filter(s => s.panelsCount > 0);
     }
 
     const allSegments = validSegments;
