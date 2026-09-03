@@ -2379,7 +2379,6 @@
           }
         }
       };
-      };
 
       canvas._drawOverlay = drawOverlay;
 
