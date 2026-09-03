@@ -1298,6 +1298,23 @@ export async function POST(request: Request) {
                     googleSolarData.estimatedAnnualSavingsAmount = (analysis.annualSavings ?? null) as number | null;
                     googleSolarData.estimatedTotalLifetimeSavingsAmount = (analysis.totalLifetimeSavings ?? null) as number | null;
                     googleSolarData.paybackYears = (analysis.paybackYears ?? null) as number | null;
+
+                    // CONJUGATION OF CONSUMPTION & PHYSICAL SPACE:
+                    // Filter raw solar panels to only those belonging to the active/selected roof segments,
+                    // sorted by production efficiency descending, and capped strictly at analysis.panelsCount.
+                    const activeSegmentIndices = new Set(roofSegments.filter(s => s.isSelected).map(s => s.segmentIndex));
+                    const rawPanels = solarPotential.solarPanels || [];
+                    const viablePanels = rawPanels
+                        .filter(p => typeof p.segmentIndex === 'number' && activeSegmentIndices.has(p.segmentIndex))
+                        .sort((a, b) => (b.yearlyEnergyDcKwh || 0) - (a.yearlyEnergyDcKwh || 0));
+
+                    const optimalPanelsCount = analysis.panelsCount ?? 18;
+                    // Pick the best panels physically located on the selected roof slopes
+                    const selectedOptimalPanels = viablePanels.slice(0, optimalPanelsCount);
+                    googleSolarData.solarPanels = selectedOptimalPanels.length > 0 ? selectedOptimalPanels : rawPanels.slice(0, optimalPanelsCount);
+
+                    console.log(`[CALC] Conjugated panels: ${googleSolarData.solarPanels.length} physical panels selected from ${viablePanels.length} viable candidates across ${activeSegmentIndices.size} active segments`);
+
                     console.log(`[CALC] Final financials (source: ${usedSource}):`, {
                         estimatedInstallationCostAmount: googleSolarData.estimatedInstallationCostAmount,
                         estimatedAnnualSavingsAmount: googleSolarData.estimatedAnnualSavingsAmount,

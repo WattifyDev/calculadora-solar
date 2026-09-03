@@ -2211,6 +2211,14 @@
           return { x: dLng, y: -dLat };
         };
 
+        const toCanvasCoords = (lat, lng) => {
+          const off = toMetersOffset(lat, lng);
+          return {
+            x: (canvas.width / 2) + (off.x * pixelsPerMeter),
+            y: (canvas.height / 2) + (off.y * pixelsPerMeter)
+          };
+        };
+
         // Draw the user marked polygon roof outline subtly
         const userPoly = data.userPolygon;
         let polyCenter = null;
@@ -2341,45 +2349,67 @@
         const availRoofWidthPx = (polyMaxX > polyMinX) ? (polyMaxX - polyMinX) * 0.85 : (canvas.width * 0.45);
         const availRoofHeightPx = (polyMaxY > polyMinY) ? ((polyMaxY - polyMinY) / 2) * 0.85 : (canvas.height * 0.25);
 
-        // Build elongated grid: realistic roofs place panels in elongated bands (2 to 3 rows)
-        let rows = targetPanelCount > 18 ? 3 : (targetPanelCount > 8 ? 2 : 1);
-        let cols = Math.ceil(targetPanelCount / rows);
+        // Render physical panels directly from data.solarPanels (conjugated by consumption and space):
+        const physicalPanels = Array.isArray(data.solarPanels) ? data.solarPanels : [];
 
-        // Fit panels into available slope bounds if needed
-        const totalGridWidth = cols * (pWidthPx + 2);
-        const totalGridHeight = rows * (pHeightPx + 2);
-        if (totalGridWidth > availRoofWidthPx && availRoofWidthPx > 0) {
-          const scaleRatio = availRoofWidthPx / totalGridWidth;
-          pWidthPx = Math.max(3, Math.round(pWidthPx * scaleRatio));
-          pHeightPx = Math.max(6, Math.round(pHeightPx * scaleRatio));
-        }
+        // Check if we have physical panels with GPS coordinates
+        if (physicalPanels.length > 0 && physicalPanels[0].center && physicalPanels[0].center.latitude) {
+          const panelOrientations = data.roofSegments || [];
 
-        const spacingX = pWidthPx + 2;
-        const spacingY = pHeightPx + 2;
+          physicalPanels.forEach(panel => {
+            const seg = panelOrientations.find(s => s.segmentIndex === panel.segmentIndex);
+            let rot = 0;
+            if (seg && seg.azimuthDegrees !== undefined) {
+              rot = ((seg.azimuthDegrees - 180) * Math.PI) / 180;
+            } else if (dominantSeg && dominantSeg.azimuthDegrees !== undefined) {
+              rot = ((dominantSeg.azimuthDegrees - 180) * Math.PI) / 180;
+            }
 
-        let drawn = 0;
-        const startOffsetX = -((cols - 1) * spacingX) / 2;
-        const startOffsetY = -((rows - 1) * spacingY) / 2;
+            const pCoords = toCanvasCoords(panel.center.latitude, panel.center.longitude);
+            const isLandscape = panel.orientation === 'LANDSCAPE';
+            const w = isLandscape ? pHeightPx : pWidthPx;
+            const h = isLandscape ? pWidthPx : pHeightPx;
 
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            if (drawn >= targetPanelCount) break;
+            drawSinglePanel(pCoords.x, pCoords.y, rot, w, h);
+          });
+        } else {
+          // Fallback to elongated grid within active slope bounds
+          let rows = targetPanelCount > 18 ? 3 : (targetPanelCount > 8 ? 2 : 1);
+          let cols = Math.ceil(targetPanelCount / rows);
 
-            // Local coordinates relative to anchor
-            const localX = startOffsetX + (c * spacingX);
-            const localY = startOffsetY + (r * spacingY);
+          // Fit panels into available slope bounds
+          const totalGridWidth = cols * (pWidthPx + 2);
+          if (totalGridWidth > availRoofWidthPx && availRoofWidthPx > 0) {
+            const scaleRatio = availRoofWidthPx / totalGridWidth;
+            pWidthPx = Math.max(3, Math.round(pWidthPx * scaleRatio));
+            pHeightPx = Math.max(6, Math.round(pHeightPx * scaleRatio));
+          }
 
-            // Rotate according to roof orientation
-            const cosA = Math.cos(roofAzimuthRad);
-            const sinA = Math.sin(roofAzimuthRad);
-            const rotX = localX * cosA - localY * sinA;
-            const rotY = localX * sinA + localY * cosA;
+          const spacingX = pWidthPx + 2;
+          const spacingY = pHeightPx + 2;
 
-            const finalX = anchorX + rotX;
-            const finalY = anchorY + rotY;
+          let drawn = 0;
+          const startOffsetX = -((cols - 1) * spacingX) / 2;
+          const startOffsetY = -((rows - 1) * spacingY) / 2;
 
-            drawSinglePanel(finalX, finalY, roofAzimuthRad, pWidthPx, pHeightPx);
-            drawn++;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (drawn >= targetPanelCount) break;
+
+              const localX = startOffsetX + (c * spacingX);
+              const localY = startOffsetY + (r * spacingY);
+
+              const cosA = Math.cos(roofAzimuthRad);
+              const sinA = Math.sin(roofAzimuthRad);
+              const rotX = localX * cosA - localY * sinA;
+              const rotY = localX * sinA + localY * cosA;
+
+              const finalX = anchorX + rotX;
+              const finalY = anchorY + rotY;
+
+              drawSinglePanel(finalX, finalY, roofAzimuthRad, pWidthPx, pHeightPx);
+              drawn++;
+            }
           }
         }
       };
