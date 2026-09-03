@@ -2161,11 +2161,11 @@
     if (data.orthophotoUrl) {
       photoContainer.innerHTML = `
         <div style="position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #0f172a; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
-          <img id="orthoImg-${containerId}" src="${data.orthophotoUrl}" alt="Vista aérea con simulación" style="display: block; width: 100%; max-height: 320px; object-fit: cover;" />
+          <img id="orthoImg-${containerId}" src="${data.orthophotoUrl}" alt="Vista aérea con simulación" style="display: block; width: 100%; height: auto; max-height: 380px; object-fit: contain; background: #0f172a;" />
           <canvas id="panelCanvas-${containerId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
-          <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(4px); color: #ffffff; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #CBFF54; box-shadow: 0 0 6px #CBFF54;"></span>
-            <span>Simulación Satelital en Tiempo Real</span>
+          <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 7px; border: 1px solid rgba(203, 255, 84, 0.4);">
+            <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #CBFF54; box-shadow: 0 0 8px #CBFF54;"></span>
+            <span>Simulación Satelital de Cubierta (30m)</span>
           </div>
         </div>
       `;
@@ -2185,96 +2185,144 @@
           ? data.roofSegments.filter(s => s.isSelected !== false && s.selected !== false).map(s => s.segmentIndex)
           : [];
 
-        if (panels && Array.isArray(panels) && panels.length > 0) {
-          // Find building center from Google Solar or centroid of panels
-          let centerLat = data.center?.latitude || data.boundingBox?.center?.latitude;
-          let centerLng = data.center?.longitude || data.boundingBox?.center?.longitude;
+        // Building center from data
+        let centerLat = data.center?.latitude;
+        let centerLng = data.center?.longitude;
 
-          if (!centerLat || !centerLng) {
-            let sumLat = 0, sumLng = 0, count = 0;
-            panels.forEach(p => {
-              const lat = p.center?.latitude ?? p.latitude;
-              const lng = p.center?.longitude ?? p.longitude;
-              if (lat && lng) {
-                sumLat += lat;
-                sumLng += lng;
-                count++;
-              }
-            });
-            if (count > 0) {
-              centerLat = sumLat / count;
-              centerLng = sumLng / count;
-            }
+        if (!centerLat || !centerLng) {
+          centerLat = parseFloat(data.latitude || 40.4168);
+          centerLng = parseFloat(data.longitude || -3.7038);
+        }
+
+        // Image field of view: radius 30m = 60m total extent
+        const totalRadiusMeters = data.orthoRadiusMeters || 30;
+        const totalBoxMeters = totalRadiusMeters * 2; // 60 meters
+
+        const latMetersPerDeg = 111139;
+        const lngMetersPerDeg = 111139 * Math.cos(centerLat * (Math.PI / 180));
+
+        const pixelsPerMeterX = canvas.width / totalBoxMeters;
+        const pixelsPerMeterY = canvas.height / totalBoxMeters;
+
+        // Function to convert lat/lng to canvas pixels
+        const toCanvasCoords = (lat, lng) => {
+          const deltaX = (lng - centerLng) * lngMetersPerDeg;
+          const deltaY = (lat - centerLat) * latMetersPerDeg;
+          return {
+            x: (canvas.width / 2) + (deltaX * pixelsPerMeterX),
+            y: (canvas.height / 2) - (deltaY * pixelsPerMeterY)
+          };
+        };
+
+        // Draw the user marked polygon roof outline subtly
+        const userPoly = data.userPolygon;
+        let polyCenter = null;
+        if (Array.isArray(userPoly) && userPoly.length >= 3) {
+          const polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(polyPts[0].x, polyPts[0].y);
+          for (let i = 1; i < polyPts.length; i++) {
+            ctx.lineTo(polyPts[i].x, polyPts[i].y);
           }
+          ctx.closePath();
+          ctx.strokeStyle = 'rgba(203, 255, 84, 0.6)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(203, 255, 84, 0.05)';
+          ctx.fill();
+          ctx.restore();
 
-          // In Google Solar dataLayers API with radiusMeters = 50, the image shows a 100m x 100m area centered at the queried coordinates.
-          // Degrees to meters: 1 deg lat ≈ 111,139 meters. 1 deg lng ≈ 111,139 * cos(lat) meters.
-          const latMetersPerDeg = 111139;
-          const lngMetersPerDeg = 111139 * Math.cos((centerLat || 40.4) * (Math.PI / 180));
+          // Calculate poly center in pixels
+          const avgPxX = polyPts.reduce((sum, p) => sum + p.x, 0) / polyPts.length;
+          const avgPxY = polyPts.reduce((sum, p) => sum + p.y, 0) / polyPts.length;
+          polyCenter = { x: avgPxX, y: avgPxY };
+        }
 
-          // Calculate visible extent in meters from canvas (100m total box by default for 50m radius)
-          const totalRadiusMeters = 50;
-          const totalBoxMeters = totalRadiusMeters * 2; // 100 meters
+        // Count how many panels should be drawn
+        const targetPanelCount = data.panelsCount || panels?.length || 18;
 
-          // Actual physical size of standard solar panel: ~1.75m x ~1.05m
-          const panelLengthMeters = data.panelHeightMeters || 1.75;
-          const panelWidthMeters = data.panelWidthMeters || 1.05;
+        // Panel dimensions in pixels
+        const pWidthMeters = 1.05;
+        const pHeightMeters = 1.75;
+        const pWidthPx = Math.max(6, Math.round(pWidthMeters * pixelsPerMeterX));
+        const pHeightPx = Math.max(10, Math.round(pHeightMeters * pixelsPerMeterY));
 
-          const pixelsPerMeterX = canvas.width / totalBoxMeters;
-          const pixelsPerMeterY = canvas.height / totalBoxMeters;
+        // Draw a single realistic solar panel
+        const drawSinglePanel = (x, y, rotationRad = 0) => {
+          ctx.save();
+          ctx.translate(x, y);
+          if (rotationRad) ctx.rotate(rotationRad);
 
-          const pWidthPx = Math.max(5, panelWidthMeters * pixelsPerMeterX);
-          const pLengthPx = Math.max(9, panelLengthMeters * pixelsPerMeterY);
+          // Panel background - Photovoltaic cell dark blue glass
+          ctx.fillStyle = '#063231';
+          ctx.strokeStyle = '#CBFF54';
+          ctx.lineWidth = 1.2;
+          ctx.shadowColor = 'rgba(203, 255, 84, 0.4)';
+          ctx.shadowBlur = 2;
 
-          panels.forEach(panel => {
-            const segIdx = panel.segmentIndex ?? 0;
-            if (activeSegments.length > 0 && !activeSegments.includes(segIdx)) return;
+          ctx.beginPath();
+          ctx.roundRect(-pWidthPx / 2, -pHeightPx / 2, pWidthPx, pHeightPx, 1);
+          ctx.fill();
+          ctx.stroke();
 
-            const lat = panel.center?.latitude ?? panel.latitude;
-            const lng = panel.center?.longitude ?? panel.longitude;
-            if (!lat || !lng || !centerLat || !centerLng) return;
+          // Glass reflection line
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.moveTo(-pWidthPx / 2 + 1, 0);
+          ctx.lineTo(pWidthPx / 2 - 1, 0);
+          ctx.stroke();
 
-            // Offset from center in meters
-            const deltaX = (lng - centerLng) * lngMetersPerDeg; // East-West meters (positive East)
-            const deltaY = (lat - centerLat) * latMetersPerDeg; // North-South meters (positive North)
+          ctx.restore();
+        };
 
-            // Canvas center is (width / 2, height / 2)
-            const canvasX = (canvas.width / 2) + (deltaX * pixelsPerMeterX);
-            const canvasY = (canvas.height / 2) - (deltaY * pixelsPerMeterY); // Invert Y (North is up)
+        // Determine orientation angle (from dominant selected roof segment or 0)
+        let roofAzimuthRad = 0;
+        if (data.roofSegments && data.roofSegments.length > 0) {
+          const dominantSeg = data.roofSegments.find(s => activeSegments.includes(s.segmentIndex)) || data.roofSegments[0];
+          if (dominantSeg && dominantSeg.azimuthDegrees !== undefined) {
+            roofAzimuthRad = ((dominantSeg.azimuthDegrees - 180) * Math.PI) / 180;
+          }
+        }
 
-            // Only draw if within bounds
-            if (canvasX < -20 || canvasX > canvas.width + 20 || canvasY < -20 || canvasY > canvas.height + 20) return;
+        // Anchor center: User polygon center if exists, otherwise center of canvas
+        const anchorX = polyCenter ? polyCenter.x : canvas.width / 2;
+        const anchorY = polyCenter ? polyCenter.y : canvas.height / 2;
 
-            ctx.save();
-            ctx.translate(canvasX, canvasY);
+        // Build a clean, modular grid array of panels (side by side in neat rows and columns)
+        const spacingX = pWidthPx + 2;
+        const spacingY = pHeightPx + 3;
 
-            // Rotate panel: If LANDSCAPE rotate 90 degrees
-            if (panel.orientation === 'LANDSCAPE') {
-              ctx.rotate(Math.PI / 2);
-            }
+        // Choose number of columns based on target count
+        let cols = Math.min(Math.max(3, Math.ceil(Math.sqrt(targetPanelCount))), 7);
+        let rows = Math.ceil(targetPanelCount / cols);
 
-            // Photovoltaic cell look: Dark blue glass with neon Wattify border
-            ctx.fillStyle = 'rgba(14, 116, 144, 0.88)';
-            ctx.strokeStyle = '#CBFF54';
-            ctx.lineWidth = 1.2;
-            ctx.shadowColor = 'rgba(203, 255, 84, 0.6)';
-            ctx.shadowBlur = 3;
+        let drawn = 0;
+        const startOffsetX = -((cols - 1) * spacingX) / 2;
+        const startOffsetY = -((rows - 1) * spacingY) / 2;
 
-            ctx.beginPath();
-            ctx.roundRect(-pWidthPx / 2, -pLengthPx / 2, pWidthPx, pLengthPx, 1);
-            ctx.fill();
-            ctx.stroke();
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (drawn >= targetPanelCount) break;
 
-            // Inner silicon reflection line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(-pWidthPx / 2 + 0.5, 0);
-            ctx.lineTo(pWidthPx / 2 - 0.5, 0);
-            ctx.stroke();
+            // Local coordinates relative to anchor
+            const localX = startOffsetX + (c * spacingX);
+            const localY = startOffsetY + (r * spacingY);
 
-            ctx.restore();
-          });
+            // Rotate according to roof orientation
+            const cosA = Math.cos(roofAzimuthRad);
+            const sinA = Math.sin(roofAzimuthRad);
+            const rotX = localX * cosA - localY * sinA;
+            const rotY = localX * sinA + localY * cosA;
+
+            const finalX = anchorX + rotX;
+            const finalY = anchorY + rotY;
+
+            drawSinglePanel(finalX, finalY, roofAzimuthRad);
+            drawn++;
+          }
         }
       };
 
@@ -2363,31 +2411,27 @@
             .filter(c => c.checked)
             .map(c => parseInt(c.value, 10));
 
-          // Create or show the recalculation popup attached to the main dialog container
-          let recalcPopup = shadow.getElementById(`recalcPopup-${containerId}`);
+          // Create or show the recalculation popup directly on document.body or shadow to guarantee top-level viewport visibility
+          let recalcPopup = document.getElementById(`recalcPopupGlobal-${containerId}`);
           if (!recalcPopup) {
             recalcPopup = document.createElement('div');
-            recalcPopup.id = `recalcPopup-${containerId}`;
-            recalcPopup.style.cssText = 'position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-10px); background: #063231; color: #ffffff; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 12px 36px rgba(0,0,0,0.35); z-index: 999999; display: flex; align-items: center; gap: 10px; border: 2px solid #CBFF54; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0; pointer-events: none;';
-            const outerContainer = shadow.querySelector('.solar-calc__container') || shadow.querySelector('.solar-calc__dialog') || shadow;
-            if (outerContainer) {
-              outerContainer.appendChild(recalcPopup);
-            }
+            recalcPopup.id = `recalcPopupGlobal-${containerId}`;
+            recalcPopup.style.cssText = 'position: fixed; top: 28px; left: 50%; transform: translateX(-50%); background: #063231; color: #ffffff; padding: 14px 28px; border-radius: 999px; font-size: 15px; font-weight: 700; font-family: sans-serif; box-shadow: 0 16px 40px rgba(0,0,0,0.45); z-index: 2147483647; display: flex; align-items: center; gap: 12px; border: 2.5px solid #CBFF54; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;';
+            document.body.appendChild(recalcPopup);
           }
 
-          if (recalcPopup) {
-            recalcPopup.innerHTML = `
-              <span style="font-size: 18px; animation: spin 0.8s linear infinite; display: inline-block;">⚡</span>
-              <span style="letter-spacing: 0.2px;">Modificando cálculos a la velocidad de la luz...</span>
-            `;
-            recalcPopup.style.opacity = '1';
-            recalcPopup.style.transform = 'translateX(-50%) translateY(0)';
-          }
+          recalcPopup.innerHTML = `
+            <span style="font-size: 20px; animation: spin 0.8s linear infinite; display: inline-block;">⚡</span>
+            <span style="letter-spacing: 0.2px;">Modificando cálculos a la velocidad de la luz...</span>
+          `;
+          recalcPopup.style.display = 'flex';
+          recalcPopup.style.opacity = '1';
+          recalcPopup.style.transform = 'translateX(-50%) translateY(0)';
 
           const gridCards = shadow.querySelectorAll(`#summaryContent-${containerId} .solar-calc__summary-card`);
           gridCards.forEach(c => {
             c.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-            c.style.opacity = '0.5';
+            c.style.opacity = '0.4';
             c.style.transform = 'scale(0.98)';
           });
 
@@ -2409,13 +2453,18 @@
             });
             if (recalcPopup) {
               recalcPopup.innerHTML = `
-                <span style="font-size: 16px;">✨</span>
-                <span>¡Cálculos actualizados con éxito!</span>
+                <span style="font-size: 18px;">✨</span>
+                <span style="color: #CBFF54;">¡Cálculos actualizados con éxito!</span>
               `;
               setTimeout(() => {
                 if (recalcPopup) {
                   recalcPopup.style.opacity = '0';
                   recalcPopup.style.transform = 'translateX(-50%) translateY(-10px)';
+                  setTimeout(() => {
+                    if (recalcPopup && recalcPopup.parentNode) {
+                      recalcPopup.style.display = 'none';
+                    }
+                  }, 300);
                 }
               }, 1200);
             }

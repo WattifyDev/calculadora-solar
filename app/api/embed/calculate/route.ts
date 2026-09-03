@@ -359,7 +359,8 @@ export async function POST(request: Request) {
         if (googleSolarApiKey) {
             try {
                 console.log('[CALC] Attempting to fetch orthophoto for coordinates:', { latitude, longitude });
-                const tiffUrl = await fetchDataLayers({ latitude, longitude }, googleSolarApiKey);
+                // Use radiusMeters: 30 for an exact 60x60m close-up focused on user's roof
+                const tiffUrl = await fetchDataLayers({ latitude, longitude }, googleSolarApiKey, 30);
                 console.log('[CALC] Orthophoto TIFF URL:', tiffUrl);
 
                 // Convert TIFF URL to PNG URL using our conversion endpoint
@@ -942,8 +943,10 @@ export async function POST(request: Request) {
                 googleSolarData.solarPanels = solarPotential.solarPanels || [];
                 googleSolarData.panelHeightMeters = solarPotential.panelHeightMeters || 1.8;
                 googleSolarData.panelWidthMeters = solarPotential.panelWidthMeters || 1.0;
-                // Add building center used for orthophoto query to ensure canvas panels overlay perfectly
+                // Add building center and polygon coordinates used for orthophoto query to ensure canvas panels overlay perfectly
                 (googleSolarData as any).center = { latitude, longitude };
+                (googleSolarData as any).orthoRadiusMeters = 30;
+                (googleSolarData as any).userPolygon = data.polygonCoordinates ? (typeof data.polygonCoordinates === 'string' ? JSON.parse(data.polygonCoordinates) : data.polygonCoordinates) : null;
                 // Get building bounding box from first segment or calculate from panels
                 if (solarPotential.roofSegmentStats && solarPotential.roofSegmentStats.length > 0) {
                     const firstBox = solarPotential.roofSegmentStats[0].boundingBox;
