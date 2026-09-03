@@ -887,7 +887,9 @@ export async function POST(request: Request) {
                         wantsBattery
                     );
                     const updatedAnnualSavings = savingsDetails.annualSavings;
-                    const updatedPaybackYears = finalInstallationCost > 0 && updatedAnnualSavings > 0 ? +(finalInstallationCost / updatedAnnualSavings).toFixed(1) : null;
+                    const spanishIncentives = calculateSpanishIncentive(finalInstallationCost);
+                    const netSubsidizedCost = Math.max(0, finalInstallationCost - spanishIncentives);
+                    const updatedPaybackYears = netSubsidizedCost > 0 && updatedAnnualSavings > 0 ? +(netSubsidizedCost / updatedAnnualSavings).toFixed(1) : (finalInstallationCost > 0 && updatedAnnualSavings > 0 ? +(finalInstallationCost / updatedAnnualSavings).toFixed(1) : null);
                     const updatedLifetimeSavings = updatedAnnualSavings * 25;
 
                     // Update googleSolarData with recalculated values
@@ -895,6 +897,8 @@ export async function POST(request: Request) {
                     googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
                     googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
                     googleSolarData.paybackYears = updatedPaybackYears ? Math.round(updatedPaybackYears) : null;
+                    (googleSolarData as any).incentivesAmount = Math.round(spanishIncentives);
+                    (googleSolarData as any).netSubsidizedCost = Math.round(netSubsidizedCost);
 
                     // --- BEGIN: Inverter Selection (after bestAnalysis.installationSizeKW is final) ---
                     if (bestAnalysis.installationSizeKW && bestAnalysis.installationSizeKW > 0) {

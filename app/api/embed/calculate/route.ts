@@ -1394,7 +1394,10 @@ export async function POST(request: Request) {
                         wantsBattery
                     );
                     const updatedAnnualSavings = savingsDetails.annualSavings;
-                    const updatedPaybackYears = finalTotalCost > 0 && updatedAnnualSavings > 0 ? +(finalTotalCost / updatedAnnualSavings).toFixed(1) : null;
+                    // Deduct Spanish subsidies (IRPF 20% conservative) for realistic payback
+                    const spanishIncentives = calculateSpanishIncentive(finalTotalCost);
+                    const netSubsidizedCost = Math.max(0, finalTotalCost - spanishIncentives);
+                    const updatedPaybackYears = netSubsidizedCost > 0 && updatedAnnualSavings > 0 ? +(netSubsidizedCost / updatedAnnualSavings).toFixed(1) : (finalTotalCost > 0 && updatedAnnualSavings > 0 ? +(finalTotalCost / updatedAnnualSavings).toFixed(1) : null);
                     const updatedLifetimeSavings = updatedAnnualSavings * 25;
 
                     // Update googleSolarData fields
@@ -1402,6 +1405,8 @@ export async function POST(request: Request) {
                     googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
                     googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
                     googleSolarData.paybackYears = updatedPaybackYears;
+                    (googleSolarData as any).incentivesAmount = Math.round(spanishIncentives);
+                    (googleSolarData as any).netSubsidizedCost = Math.round(netSubsidizedCost);
 
                     // --- BEGIN: Cost Breakdown and IVA ---
                     if (finalTotalCost > 0) {

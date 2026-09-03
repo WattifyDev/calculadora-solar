@@ -2684,6 +2684,43 @@
       batteryInfo.innerHTML = '';
     }
 
+    // Display Spanish subsidies and municipal IBI information note
+    let incentivesInfo = shadow.getElementById(`summaryIncentivesInfo-${containerId}`);
+    if (!incentivesInfo) {
+      incentivesInfo = document.createElement('div');
+      incentivesInfo.id = `summaryIncentivesInfo-${containerId}`;
+      incentivesInfo.style.cssText = 'background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin: 14px 0; font-size: 13px; color: #1e3a8a; line-height: 1.5; text-align: left;';
+      const summaryContent = shadow.getElementById(`summaryContent-${containerId}`);
+      summaryContent.appendChild(incentivesInfo);
+    }
+
+    if (currency === 'EUR' || currentCountryInfo.country === 'Spain') {
+      const incAmount = data.incentivesAmount || Math.round(cost * 0.20);
+      const netCost = data.netSubsidizedCost || Math.max(0, cost - incAmount);
+      const payback = data.paybackYears ? `${data.paybackYears} años` : (savings > 0 ? `${(netCost / savings).toFixed(1)} años` : '5-7 años');
+
+      incentivesInfo.style.display = 'block';
+      incentivesInfo.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+          <span style="font-size: 20px; line-height: 1;">🏛️</span>
+          <div>
+            <div style="font-weight: 700; color: #1e40af; font-size: 14px;">
+              Ayudas y Subvenciones Estimadas: -${formatCurrency(incAmount, currency)}
+            </div>
+            <div style="color: #3b82f6; font-size: 12px; font-weight: 600; margin-top: 2px;">
+              Coste final con deducción fiscal (IRPF): <strong>${formatCurrency(netCost, currency)}</strong> • Retorno estimado: <strong style="color: #15803d; font-size: 13px;">${payback}</strong>
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 11.5px; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #dbeafe; margin-top: 6px;">
+          <strong>ℹ️ Bonificación del IBI:</strong> Esta bonificación depende de cada Municipio. Wattify consultará la disponibilidad exacta durante la tramitación administrativa de los permisos oficiales, una vez aceptado el proyecto.
+        </div>
+      `;
+    } else {
+      incentivesInfo.style.display = 'none';
+      incentivesInfo.innerHTML = '';
+    }
+
     let priceInfo = shadow.getElementById(`summaryAveragePrice-${containerId}`);
     if (!priceInfo) {
       priceInfo = document.createElement('div');

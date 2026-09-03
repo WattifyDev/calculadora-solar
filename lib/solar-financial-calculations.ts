@@ -209,8 +209,8 @@ export async function calculateBatteryRequirement(
 
 /**
  * Advanced annual savings calculation accounting for direct self-consumption and surplus compensation
- * - Without battery: ~50% direct self-consumption, remaining surplus rewarded at 35% of retail price
- * - With battery: ~85% self-consumption, remaining surplus rewarded at 35% of retail price
+ * - Without battery: 65% direct self-consumption, remaining surplus rewarded at 35% of retail price
+ * - With battery: 95% self-consumption, plus 5% stored in battery valorized at 0.04 €/kWh (40 €/MWh), remaining surplus at 35%
  */
 export function calculateAdvancedAnnualSavings(
     annualProductionKWh: number,
@@ -223,19 +223,28 @@ export function calculateAdvancedAnnualSavings(
     surplusKWh: number;
     directSavings: number;
     surplusCompensation: number;
+    batteryRetentionSavings: number;
     selfConsumptionRatio: number;
 } {
     const surplusPrice = pricePerKWh * 0.35; // Surplus compensated at 35% of retail rate
-    const selfConsumptionRatio = hasBattery ? 0.85 : 0.50; // 85% with battery, 50% without
+    const selfConsumptionRatio = hasBattery ? 0.95 : 0.65; // 95% with battery, 65% without
 
     // Maximum solar that can substitute consumption
     const theoreticalOffset = Math.min(annualProductionKWh, annualConsumptionKWh);
     const selfConsumptionKWh = theoreticalOffset * selfConsumptionRatio;
+    
+    // In installations with battery, the 5% difference that remains stored in the battery is valued at 0.04 €/kWh
+    let batteryRetentionSavings = 0;
+    if (hasBattery) {
+        const batteryRetentionKWh = theoreticalOffset * 0.05; // 5% retained in battery
+        batteryRetentionSavings = batteryRetentionKWh * 0.04; // 0.04 €/kWh
+    }
+
     const surplusKWh = Math.max(0, annualProductionKWh - selfConsumptionKWh);
 
     const directSavings = selfConsumptionKWh * pricePerKWh;
     const surplusCompensation = surplusKWh * surplusPrice;
-    const annualSavings = Math.round(directSavings + surplusCompensation);
+    const annualSavings = Math.round(directSavings + surplusCompensation + batteryRetentionSavings);
 
     return {
         annualSavings,
@@ -243,6 +252,7 @@ export function calculateAdvancedAnnualSavings(
         surplusKWh: Math.round(surplusKWh),
         directSavings: Math.round(directSavings),
         surplusCompensation: Math.round(surplusCompensation),
+        batteryRetentionSavings: Math.round(batteryRetentionSavings),
         selfConsumptionRatio,
     };
 }
