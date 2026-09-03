@@ -38,15 +38,13 @@ export async function convertTiffToPng(tiffUrl: string): Promise<Buffer | null> 
 
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-
         const pngBuffer = await sharp(buffer)
-            .resize(800, 600, {
-                fit: 'inside',
-                withoutEnlargement: true
+            .resize(800, 800, {
+                fit: 'fill'
             })
             .png({
                 compressionLevel: 9,
-                quality: 75,
+                quality: 80,
                 progressive: true
             })
             .toBuffer();

@@ -2204,14 +2204,11 @@
         // Uniform pixels per meter across X and Y for a perfect 1:1 square
         const pixelsPerMeter = canvas.width / totalBoxMeters;
 
-        // Function to convert lat/lng to canvas pixels
-        const toCanvasCoords = (lat, lng) => {
-          const deltaX = (lng - centerLng) * lngMetersPerDeg;
-          const deltaY = (lat - centerLat) * latMetersPerDeg;
-          return {
-            x: (canvas.width / 2) + (deltaX * pixelsPerMeter),
-            y: (canvas.height / 2) - (deltaY * pixelsPerMeter)
-          };
+        // Convert lat/lng to meters offset relative to the requested center
+        const toMetersOffset = (lat, lng) => {
+          const dLng = (lng - centerLng) * lngMetersPerDeg;
+          const dLat = (lat - centerLat) * latMetersPerDeg;
+          return { x: dLng, y: -dLat };
         };
 
         // Draw the user marked polygon roof outline subtly
@@ -2221,7 +2218,19 @@
         let polyMinY = Infinity, polyMaxY = -Infinity;
 
         if (Array.isArray(userPoly) && userPoly.length >= 3) {
-          const polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
+          // Raw meter offsets of vertices relative to center
+          const rawOffsets = userPoly.map(pt => toMetersOffset(pt.lat, pt.lng));
+          const avgOffX = rawOffsets.reduce((sum, p) => sum + p.x, 0) / rawOffsets.length;
+          const avgOffY = rawOffsets.reduce((sum, p) => sum + p.y, 0) / rawOffsets.length;
+
+          // Since the orthophoto center was queried exactly at the centroid of this polygon,
+          // the polygon's visual center on the image is at the exact center of the canvas!
+          // This eliminates any lat/lng geodesic projection drift.
+          const polyPts = rawOffsets.map(p => ({
+            x: (canvas.width / 2) + ((p.x - avgOffX) * pixelsPerMeter),
+            y: (canvas.height / 2) + ((p.y - avgOffY) * pixelsPerMeter)
+          }));
+
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(polyPts[0].x, polyPts[0].y);
@@ -2229,11 +2238,11 @@
             ctx.lineTo(polyPts[i].x, polyPts[i].y);
           }
           ctx.closePath();
-          ctx.strokeStyle = 'rgba(203, 255, 84, 0.75)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
+          ctx.strokeStyle = 'rgba(203, 255, 84, 0.85)';
+          ctx.lineWidth = 2.5;
+          ctx.setLineDash([5, 5]);
           ctx.stroke();
-          ctx.fillStyle = 'rgba(203, 255, 84, 0.08)';
+          ctx.fillStyle = 'rgba(203, 255, 84, 0.09)';
           ctx.fill();
           ctx.restore();
 
@@ -2247,7 +2256,7 @@
             if (pt.y < polyMinY) polyMinY = pt.y;
             if (pt.y > polyMaxY) polyMaxY = pt.y;
           }
-          polyCenter = { x: sumX / polyPts.length, y: sumY / polyPts.length };
+          polyCenter = { x: canvas.width / 2, y: canvas.height / 2 };
         }
 
         // Count how many panels should be drawn: dynamically sum active segments if selected, or use panelsCount
@@ -2310,24 +2319,19 @@
         }
 
         // Anchor center:
-        // If the dominant segment provides a GPS center, use it!
-        // Otherwise, if user marked a polygon, calculate position on the active slope (Sur = +Y down in canvas, Norte = -Y up in canvas)
+        // Position on the active slope of the roof polygon:
+        // For South slope (~180°), the southern slope is towards the bottom (+Y in canvas) of the polygon
         let anchorX = canvas.width / 2;
         let anchorY = canvas.height / 2;
 
-        if (dominantSeg && dominantSeg.center && dominantSeg.center.latitude && dominantSeg.center.longitude) {
-          const segCoords = toCanvasCoords(dominantSeg.center.latitude, dominantSeg.center.longitude);
-          anchorX = segCoords.x;
-          anchorY = segCoords.y;
-        } else if (polyCenter) {
+        if (polyCenter) {
           anchorX = polyCenter.x;
-          // If slope is South (~180°), the southern slope is towards the bottom (+Y) of the polygon
           const isSouthSlope = dominantSeg ? (dominantSeg.azimuthDegrees >= 110 && dominantSeg.azimuthDegrees <= 250) : true;
           const polyHeight = polyMaxY - polyMinY;
           if (isSouthSlope && polyHeight > 0) {
-            anchorY = polyCenter.y + (polyHeight * 0.22); // Shift downwards to sit squarely on South slope
+            anchorY = polyCenter.y + (polyHeight * 0.22); // Shift downwards cleanly into the South slope
           } else if (polyHeight > 0) {
-            anchorY = polyCenter.y - (polyHeight * 0.22); // Shift upwards for North slope
+            anchorY = polyCenter.y - (polyHeight * 0.22); // Shift upwards into the North slope
           } else {
             anchorY = polyCenter.y;
           }
