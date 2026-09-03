@@ -2160,10 +2160,10 @@
     }
     if (data.orthophotoUrl) {
       photoContainer.innerHTML = `
-        <div style="position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #0f172a; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
-          <img id="orthoImg-${containerId}" src="${data.orthophotoUrl}" alt="Vista aérea con simulación" style="display: block; width: 100%; height: auto; max-height: 380px; object-fit: contain; background: #0f172a;" />
+        <div style="position: relative; width: 100%; max-width: 480px; margin: 0 auto; aspect-ratio: 1 / 1; border-radius: 14px; overflow: hidden; background: #0f172a; box-shadow: 0 4px 20px rgba(0,0,0,0.16); border: 2px solid #e2e8f0;">
+          <img id="orthoImg-${containerId}" src="${data.orthophotoUrl}" alt="Vista aérea con simulación" style="display: block; width: 100%; height: 100%; object-fit: cover; background: #0f172a;" />
           <canvas id="panelCanvas-${containerId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
-          <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 7px; border: 1px solid rgba(203, 255, 84, 0.4);">
+          <div style="position: absolute; bottom: 10px; right: 12px; background: rgba(6, 50, 49, 0.88); backdrop-filter: blur(6px); color: #ffffff; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 7px; border: 1.5px solid #CBFF54;">
             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #CBFF54; box-shadow: 0 0 8px #CBFF54;"></span>
             <span>Simulación Satelital de Cubierta (30m)</span>
           </div>
@@ -2194,23 +2194,23 @@
           centerLng = parseFloat(data.longitude || -3.7038);
         }
 
-        // Image field of view: radius 30m = 60m total extent
+        // Image field of view: radius 30m = 60m total square extent
         const totalRadiusMeters = data.orthoRadiusMeters || 30;
         const totalBoxMeters = totalRadiusMeters * 2; // 60 meters
 
         const latMetersPerDeg = 111139;
         const lngMetersPerDeg = 111139 * Math.cos(centerLat * (Math.PI / 180));
 
-        const pixelsPerMeterX = canvas.width / totalBoxMeters;
-        const pixelsPerMeterY = canvas.height / totalBoxMeters;
+        // Uniform pixels per meter across X and Y for a perfect 1:1 square
+        const pixelsPerMeter = canvas.width / totalBoxMeters;
 
         // Function to convert lat/lng to canvas pixels
         const toCanvasCoords = (lat, lng) => {
           const deltaX = (lng - centerLng) * lngMetersPerDeg;
           const deltaY = (lat - centerLat) * latMetersPerDeg;
           return {
-            x: (canvas.width / 2) + (deltaX * pixelsPerMeterX),
-            y: (canvas.height / 2) - (deltaY * pixelsPerMeterY)
+            x: (canvas.width / 2) + (deltaX * pixelsPerMeter),
+            y: (canvas.height / 2) - (deltaY * pixelsPerMeter)
           };
         };
 
@@ -2226,11 +2226,11 @@
             ctx.lineTo(polyPts[i].x, polyPts[i].y);
           }
           ctx.closePath();
-          ctx.strokeStyle = 'rgba(203, 255, 84, 0.6)';
+          ctx.strokeStyle = 'rgba(203, 255, 84, 0.7)';
           ctx.lineWidth = 2;
           ctx.setLineDash([4, 4]);
           ctx.stroke();
-          ctx.fillStyle = 'rgba(203, 255, 84, 0.05)';
+          ctx.fillStyle = 'rgba(203, 255, 84, 0.08)';
           ctx.fill();
           ctx.restore();
 
@@ -2254,11 +2254,11 @@
           }
         }
 
-        // Panel dimensions in pixels
+        // Panel real physical dimensions: ~1.05m x ~1.75m
         const pWidthMeters = 1.05;
         const pHeightMeters = 1.75;
-        const pWidthPx = Math.max(6, Math.round(pWidthMeters * pixelsPerMeterX));
-        const pHeightPx = Math.max(10, Math.round(pHeightMeters * pixelsPerMeterY));
+        const pWidthPx = Math.max(5, Math.round(pWidthMeters * pixelsPerMeter));
+        const pHeightPx = Math.max(9, Math.round(pHeightMeters * pixelsPerMeter));
 
         // Draw a single realistic solar panel
         const drawSinglePanel = (x, y, rotationRad = 0) => {
@@ -2279,7 +2279,7 @@
           ctx.stroke();
 
           // Glass reflection line
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
           ctx.lineWidth = 0.8;
           ctx.beginPath();
           ctx.moveTo(-pWidthPx / 2 + 1, 0);
@@ -2304,10 +2304,10 @@
 
         // Build a clean, modular grid array of panels (side by side in neat rows and columns)
         const spacingX = pWidthPx + 2;
-        const spacingY = pHeightPx + 3;
+        const spacingY = pHeightPx + 2;
 
-        // Choose number of columns based on target count
-        let cols = Math.min(Math.max(3, Math.ceil(Math.sqrt(targetPanelCount))), 7);
+        // Columns and rows arranged proportionally
+        let cols = Math.min(Math.max(3, Math.ceil(Math.sqrt(targetPanelCount * 1.3))), 8);
         let rows = Math.ceil(targetPanelCount / cols);
 
         let drawn = 0;

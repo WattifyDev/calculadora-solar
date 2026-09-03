@@ -184,7 +184,7 @@ export function extractRoofSegments(
     }
 
     // First map all raw segments
-    const allSegments = solarPotential.roofSegmentStats.map((stat, index) => {
+    const allRawSegments = solarPotential.roofSegmentStats.map((stat, index) => {
         const pitch = Math.round(stat.pitchDegrees);
         const azimuth = Math.round(stat.azimuthDegrees);
         const orientationLabel = getOrientationLabel(azimuth);
@@ -208,6 +208,20 @@ export function extractRoofSegments(
             isSelected: false,
         };
     });
+
+    // FILTER OUT RESIDUAL MICRO-SEGMENTS:
+    // Discard chimney caps, micro-eaves, and tiny surfaces (area < 20m² or panels < 6)
+    // to present clean, realistic primary roof slopes to the user.
+    let validSegments = allRawSegments.filter(s => s.areaMeters2 >= 20 && s.panelsCount >= 6);
+    if (validSegments.length === 0) {
+        // Fallback if the building is very small: keep segments with at least 10m² and 4 panels
+        validSegments = allRawSegments.filter(s => s.areaMeters2 >= 10 && s.panelsCount >= 4);
+    }
+    if (validSegments.length === 0) {
+        validSegments = allRawSegments.filter(s => s.panelsCount > 0);
+    }
+
+    const allSegments = validSegments;
 
     // If user explicitly selected segments via UI checkbox, respect their exact manual choice
     if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
@@ -238,7 +252,8 @@ export function extractRoofSegments(
         })
         .map(s => s.segmentIndex);
 
-    // Greedily fill up to targetPanelsNeeded with the best segments
+    // Pick only the top primary segment for initial recommendation (e.g. Sur principal),
+    // and only add a second one if targetPanelsNeeded strictly exceeds the primary slope capacity.
     const recommendedSet = new Set<number>();
     let accumulatedPanels = 0;
 
@@ -246,13 +261,13 @@ export function extractRoofSegments(
         const seg = allSegments.find(s => s.segmentIndex === idx);
         if (!seg) continue;
 
-        // Skip Grade D in recommended initial selection if possible
+        // Skip Grade D in recommended initial selection
         if (seg.performanceGrade === 'D' && recommendedSet.size > 0) continue;
 
         recommendedSet.add(idx);
         accumulatedPanels += seg.panelsCount;
 
-        // Once we have satisfied the customer's consumption, stop adding to recommended set
+        // Stop as soon as we have covered or reached close to targetPanelsNeeded
         if (accumulatedPanels >= targetPanelsNeeded) {
             break;
         }
