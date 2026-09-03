@@ -2240,8 +2240,19 @@
           polyCenter = { x: avgPxX, y: avgPxY };
         }
 
-        // Count how many panels should be drawn
-        const targetPanelCount = data.panelsCount || panels?.length || 18;
+        // Count how many panels should be drawn: dynamically sum active segments if selected, or use panelsCount
+        let targetPanelCount = data.panelsCount || 18;
+        if (data.roofSegments && activeSegments.length > 0) {
+          const selectedSum = data.roofSegments
+            .filter(s => activeSegments.includes(s.segmentIndex))
+            .reduce((sum, s) => {
+              const pCount = s.panelsCount > 0 ? s.panelsCount : Math.max(1, Math.floor((s.areaMeters2 || 0) / 2.2));
+              return sum + pCount;
+            }, 0);
+          if (selectedSum > 0) {
+            targetPanelCount = selectedSum;
+          }
+        }
 
         // Panel dimensions in pixels
         const pWidthMeters = 1.05;
@@ -2326,12 +2337,15 @@
         }
       };
 
+      canvas._drawOverlay = drawOverlay;
+
       if (img.complete) {
         setTimeout(drawOverlay, 50);
       } else {
         img.onload = () => setTimeout(drawOverlay, 50);
       }
       window.addEventListener('resize', drawOverlay, { passive: true });
+      drawOverlay();
     } else {
       photoContainer.innerHTML = '';
     }
@@ -2435,6 +2449,18 @@
             c.style.transform = 'scale(0.98)';
           });
 
+          // Trigger canvas redraw instantly using current selected checkboxes count
+          const activeCanvas = shadow.querySelector(`#panelCanvas-${containerId}`);
+          if (activeCanvas && typeof activeCanvas._drawOverlay === 'function') {
+            // Update active segments in local memory temporarily for immediate visual response
+            if (data && data.roofSegments) {
+              data.roofSegments.forEach(s => {
+                s.isSelected = selectedIndices.includes(s.segmentIndex);
+              });
+            }
+            activeCanvas._drawOverlay();
+          }
+
           try {
             shadow.getElementById(`summaryPanels-${containerId}`).textContent = '...';
             shadow.getElementById(`summaryProduction-${containerId}`).textContent = '...';
@@ -2444,6 +2470,11 @@
             const updatedSolarData = await calculateSolarData(selectedIndices);
             solarData = updatedSolarData;
             updateSummaryDisplay(solarData);
+
+            const postCanvas = shadow.querySelector(`#panelCanvas-${containerId}`);
+            if (postCanvas && typeof postCanvas._drawOverlay === 'function') {
+              postCanvas._drawOverlay();
+            }
           } catch (err) {
             console.error('Segment recalculation error:', err);
           } finally {
