@@ -153,6 +153,10 @@ export interface GoogleSolarData {
   installationSizeKW?: number | null;
   orthophotoUrl?: string | null;
   roofSegments?: RoofSegmentDetails[];
+  solarPanels?: import('./google-solar-types').SolarPanel[];
+  panelHeightMeters?: number | null;
+  panelWidthMeters?: number | null;
+  boundingBox?: import('./google-solar-types').LatLngBox | null;
 }
 
 export interface ExpectedPvgisData {

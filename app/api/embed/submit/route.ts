@@ -4,7 +4,7 @@ import { Client, AddressType, Language, ReverseGeocodingLocationType } from "@go
 import { validateEmbedApiKey, embedRateLimit } from '@/lib/security';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
-import { fetchBuildingInsights, fetchDataLayers } from '@/lib/google-solar';
+import { fetchBuildingInsights, fetchDataLayers, extractRoofSegments } from '@/lib/google-solar';
 import type { GoogleSolarData } from '@/lib/types';
 import type { BuildingInsightsResponse, SolarPanelConfig } from '@/lib/google-solar-types';
 import { PanelApplication, PanelType, Material, User, SystemSetting } from '@/generated/prisma';
@@ -27,7 +27,11 @@ import {
     DEFAULT_FINANCIAL_CONSTANTS_CO,
     DEFAULT_FINANCIAL_CONSTANTS_GT,
     getColombianFinancialConstants,
-    getGuatemalanFinancialConstants
+    getGuatemalanFinancialConstants,
+    getTieredInstallationPricePerKw,
+    calculateBatteryRequirement,
+    calculateAdvancedAnnualSavings,
+    type BatteryConfig
 } from '@/lib/solar-financial-calculations';
 import { getIvaRate, convertEurToCop, convertEurToGtq } from '@/lib/currency';
 
@@ -85,6 +89,8 @@ interface EmbedFormData {
     panelType?: string;
     averagePriceCurrency?: string;
     polygonCoordinates?: string;
+    hasBattery?: boolean | string;
+    selectedSegmentIndices?: number[] | string;
 }
 
 // New type for cost breakdown (mirror from calculate route)
@@ -96,6 +102,7 @@ interface CostBreakdown {
     garantiaSoporteTecnico: number | null;
     herramientaMonitorizacion: number | null;
     estructura: number | null;
+    bateria?: number | null;
 }
 
 // Helper function to extract hostname from origin URL (if not already present)
@@ -657,6 +664,21 @@ export async function POST(request: Request) {
             googleSolarData.maxArrayAreaMeters2 = solarPotential.maxArrayAreaMeters2 ?? null;
             googleSolarData.maxArrayPanelsCount = solarPotential.maxArrayPanelsCount ?? null;
 
+            // Extract roof segments and respect selected segments
+            let selectedSegmentIndices: number[] | undefined = undefined;
+            if (data.selectedSegmentIndices) {
+                if (Array.isArray(data.selectedSegmentIndices)) {
+                    selectedSegmentIndices = data.selectedSegmentIndices.map(Number);
+                } else if (typeof data.selectedSegmentIndices === 'string') {
+                    try {
+                        selectedSegmentIndices = JSON.parse(data.selectedSegmentIndices).map(Number);
+                    } catch {
+                        selectedSegmentIndices = undefined;
+                    }
+                }
+            }
+            googleSolarData.roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices);
+
             // Set currency code and financial constants based on final currency
             const financialConstants: FinancialConstants = {
                 ...FINANCIAL_CONSTANTS,
@@ -678,15 +700,40 @@ export async function POST(request: Request) {
             if (solarPotential.solarPanelConfigs && solarPotential.solarPanelConfigs.length > 0 && solarPotential.panelCapacityWatts) {
                 const costOfElectricityWithoutSolar = calculateCostOfElectricityWithoutSolar(annualKWhEnergyConsumption, financialConstants);
 
+                let segmentPanelCap = Infinity;
+                let segmentEnergyFactor = 1.0;
+                if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && googleSolarData.roofSegments && googleSolarData.roofSegments.length > 0) {
+                    const totalRoofPanels = googleSolarData.roofSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                    const selectedRoofPanels = googleSolarData.roofSegments
+                        .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
+                        .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                    if (totalRoofPanels > 0) {
+                        segmentPanelCap = selectedRoofPanels;
+                        segmentEnergyFactor = selectedRoofPanels / totalRoofPanels;
+                    }
+                }
+
                 for (const config of solarPotential.solarPanelConfigs) {
                     if (!config.panelsCount || !config.yearlyEnergyDcKwh) continue;
 
-                    const initialAcKwhPerYear = calculateInitialAcKwhPerYear(config.yearlyEnergyDcKwh, financialConstants);
+                    let effectivePanelsCount = config.panelsCount;
+                    let effectiveYearlyEnergyDcKwh = config.yearlyEnergyDcKwh;
 
-                    // Optional: Skip configs that produce more than consumed annually (as per docs suggestion)
-                    // if (initialAcKwhPerYear > annualKWhEnergyConsumption) continue;
+                    if (segmentPanelCap < Infinity) {
+                        if (config.roofSegmentSummaries && config.roofSegmentSummaries.length > 0) {
+                            const selectedSummaries = config.roofSegmentSummaries.filter(rss => selectedSegmentIndices!.includes(rss.segmentIndex));
+                            effectivePanelsCount = selectedSummaries.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                            effectiveYearlyEnergyDcKwh = selectedSummaries.reduce((sum, s) => sum + (s.yearlyEnergyDcKwh || 0), 0);
+                        } else {
+                            effectivePanelsCount = Math.min(config.panelsCount, segmentPanelCap);
+                            effectiveYearlyEnergyDcKwh = config.yearlyEnergyDcKwh * segmentEnergyFactor;
+                        }
+                    }
 
-                    const installationSizeKW = calculateInstallationSizeKW(config.panelsCount, solarPotential.panelCapacityWatts);
+                    if (effectivePanelsCount <= 0 || effectiveYearlyEnergyDcKwh <= 0) continue;
+
+                    const initialAcKwhPerYear = calculateInitialAcKwhPerYear(effectiveYearlyEnergyDcKwh, financialConstants);
+                    const installationSizeKW = calculateInstallationSizeKW(effectivePanelsCount, solarPotential.panelCapacityWatts);
                     const installationCost = installationSizeKW * effectivePriceKW;
                     const lifetimeProductionAcKwh = calculateLifetimeProductionAcKwh(initialAcKwhPerYear, financialConstants);
                     const remainingLifetimeUtilityBill = calculateRemainingLifetimeUtilityBill(annualKWhEnergyConsumption, initialAcKwhPerYear, financialConstants);
@@ -696,8 +743,8 @@ export async function POST(request: Request) {
                     const annualSavings = totalLifetimeSavings / financialConstants.installationLifeSpan;
 
                     const currentAnalysis: DetailedFinancialAnalysis = {
-                        panelsCount: config.panelsCount,
-                        yearlyEnergyDcKwh: config.yearlyEnergyDcKwh,
+                        panelsCount: effectivePanelsCount,
+                        yearlyEnergyDcKwh: effectiveYearlyEnergyDcKwh,
                         initialAcKwhPerYear,
                         installationSizeKW,
                         installationCost,
@@ -737,8 +784,16 @@ export async function POST(request: Request) {
                                 const areaPerPanel = selectedPanel.area;
 
                                 if (areaPerPanel && areaPerPanel > 0 && solarPotential.maxArrayAreaMeters2) {
-                                    // Calculate max panels by area
-                                    const maxPanelsByArea = Math.floor(solarPotential.maxArrayAreaMeters2 / areaPerPanel);
+                                    // Calculate max panels by area (accounting for selected segments if specified)
+                                    let effectiveArea = solarPotential.maxArrayAreaMeters2;
+                                    let maxAllowedPanelsFromSegments = Infinity;
+                                    if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && googleSolarData.roofSegments && googleSolarData.roofSegments.length > 0) {
+                                        const selectedSegments = googleSolarData.roofSegments.filter(s => selectedSegmentIndices!.includes(s.segmentIndex));
+                                        effectiveArea = selectedSegments.reduce((sum, s) => sum + (s.areaMeters2 || 0), 0) || solarPotential.maxArrayAreaMeters2;
+                                        maxAllowedPanelsFromSegments = selectedSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                                    }
+
+                                    const maxPanelsByArea = Math.floor(effectiveArea / areaPerPanel);
 
                                     // Calculate panels needed based on consumption and actual panel wattage
                                     // Use a more conservative approach: assume 1200 kWh per kWp per year for Spain
@@ -747,12 +802,16 @@ export async function POST(request: Request) {
                                     const kwhPerPanelPerYear = (panelWattage / 1000) * 1200; // Conservative production estimate
                                     const panelsNeededByConsumption = Math.ceil(annualConsumption / kwhPerPanelPerYear);
 
-                                    // Use the minimum of area-limited and consumption-based calculation
-                                    const calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
+                                    // Use the minimum of area-limited, consumption-based, and selected segments limits
+                                    let calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
+                                    if (maxAllowedPanelsFromSegments < Infinity && maxAllowedPanelsFromSegments > 0) {
+                                        calculatedPanelsCount = Math.min(calculatedPanelsCount, maxAllowedPanelsFromSegments);
+                                    }
 
                                     console.log('[SUBMIT] Panel calculation details:', {
                                         maxPanelsByArea,
                                         panelsNeededByConsumption,
+                                        maxAllowedPanelsFromSegments,
                                         calculatedPanelsCount,
                                         panelWattage,
                                         kwhPerPanelPerYear,
@@ -807,9 +866,35 @@ export async function POST(request: Request) {
                     const paybackYears = calculatePaybackYears(baseInstallationCostForDB, annualKWhEnergyConsumption, bestAnalysis.initialAcKwhPerYear, financialConstantsWithIncentives);
                     const annualSavings = totalLifetimeSavings / financialConstantsWithIncentives.installationLifeSpan;
                     // Update googleSolarData with recalculated values
-                    googleSolarData.estimatedTotalLifetimeSavingsAmount = totalLifetimeSavings;
-                    googleSolarData.estimatedAnnualSavingsAmount = annualSavings;
-                    googleSolarData.paybackYears = paybackYears;
+                    // --- BEGIN: Battery and Advanced Savings for Spain ---
+                    const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
+                    const systemSizeKW = bestAnalysis.installationSizeKW ?? 0;
+                    let batteryConfig: BatteryConfig | null = null;
+                    if (wantsBattery && systemSizeKW > 0) {
+                        batteryConfig = await calculateBatteryRequirement(systemSizeKW, 'spain', 'EUR');
+                    }
+
+                    const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+                    const finalInstallationCost = (baseInstallationCostForDB ?? 0) + batteryCost;
+
+                    // Recalculate annual savings using advanced self-consumption model
+                    const annualConsumption = annualKWhEnergyConsumption;
+                    const annualProductionKWh = bestAnalysis.initialAcKwhPerYear ?? (systemSizeKW * 1400);
+                    const savingsDetails = calculateAdvancedAnnualSavings(
+                        annualProductionKWh,
+                        annualConsumption,
+                        averagePrice,
+                        wantsBattery
+                    );
+                    const updatedAnnualSavings = savingsDetails.annualSavings;
+                    const updatedPaybackYears = finalInstallationCost > 0 && updatedAnnualSavings > 0 ? +(finalInstallationCost / updatedAnnualSavings).toFixed(1) : null;
+                    const updatedLifetimeSavings = updatedAnnualSavings * 25;
+
+                    // Update googleSolarData with recalculated values
+                    googleSolarData.estimatedInstallationCostAmount = finalInstallationCost;
+                    googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
+                    googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
+                    googleSolarData.paybackYears = updatedPaybackYears ? Math.round(updatedPaybackYears) : null;
 
                     // --- BEGIN: Inverter Selection (after bestAnalysis.installationSizeKW is final) ---
                     if (bestAnalysis.installationSizeKW && bestAnalysis.installationSizeKW > 0) {
@@ -849,22 +934,23 @@ export async function POST(request: Request) {
                     }
                     // --- END: Inverter Selection ---
 
-                    // --- BEGIN: Cost Breakdown and IVA (after bestAnalysis.installationCost is final) ---
-                    if (baseInstallationCostForDB && baseInstallationCostForDB > 0) {
+                    // --- BEGIN: Cost Breakdown and IVA (after finalInstallationCost is final) ---
+                    if (finalInstallationCost > 0) {
                         const sysPanelCompPercent = systemSettings?.panelComponentPercentage ?? DEFAULT_SYSTEM_SETTINGS.panelComponentPercentage;
 
                         costBreakdownResult = {
-                            serviciosInstalacionPuestaMarcha: baseInstallationCostForDB * installServicesPercent,
-                            costePanel: baseInstallationCostForDB * sysPanelCompPercent,
-                            costeInversor: baseInstallationCostForDB * invCostPercent,
-                            puestaMarchaLegalizacion: baseInstallationCostForDB * commLegPercent,
-                            garantiaSoporteTecnico: baseInstallationCostForDB * warrantyPercent,
-                            herramientaMonitorizacion: baseInstallationCostForDB * monitoringPercent,
-                            estructura: baseInstallationCostForDB * structurePercent,
+                            serviciosInstalacionPuestaMarcha: Math.round((baseInstallationCostForDB ?? 0) * installServicesPercent),
+                            costePanel: Math.round((baseInstallationCostForDB ?? 0) * sysPanelCompPercent),
+                            costeInversor: Math.round((baseInstallationCostForDB ?? 0) * invCostPercent),
+                            puestaMarchaLegalizacion: Math.round((baseInstallationCostForDB ?? 0) * commLegPercent),
+                            garantiaSoporteTecnico: Math.round((baseInstallationCostForDB ?? 0) * warrantyPercent),
+                            herramientaMonitorizacion: Math.round((baseInstallationCostForDB ?? 0) * monitoringPercent),
+                            estructura: Math.round((baseInstallationCostForDB ?? 0) * structurePercent),
+                            bateria: batteryCost > 0 ? batteryCost : null,
                         };
                         const ivaRate = getIvaRate(country);
-                        ivaAmountResult = baseInstallationCostForDB * ivaRate;
-                        totalCostWithIvaResult = baseInstallationCostForDB + ivaAmountResult;
+                        ivaAmountResult = Math.round(finalInstallationCost * ivaRate);
+                        totalCostWithIvaResult = finalInstallationCost + ivaAmountResult;
                     }
                     // --- END: Cost Breakdown and IVA ---
 
@@ -1046,19 +1132,39 @@ export async function POST(request: Request) {
             const dailyAverage = annualProduction / 365;
             const efficiency = 100 - loss;
             const systemSize = finalPeakpower; // Use final calculated system size
-            const totalCost = systemSize * effectivePriceKW;
+
+            // 1. Tiered installation cost per kWp (Economy of scale)
+            effectivePriceKW = await getTieredInstallationPricePerKw(systemSize, country);
+            console.log(`[SUBMIT] ${country} Tiered effectivePriceKW: ${effectivePriceKW} ${targetCurrency}/kW for ${systemSize}kWp`);
+
+            const baseSolarCost = Math.round(systemSize * effectivePriceKW);
+
+            // 2. Battery requirement and pricing
+            const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
+            let batteryConfig: BatteryConfig | null = null;
+            if (wantsBattery) {
+                batteryConfig = await calculateBatteryRequirement(systemSize, country, targetCurrency as any);
+            }
+
+            const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+            const totalCost = baseSolarCost + batteryCost;
             const costPerWatt = effectivePriceKW / 1000;
             const co2Reduction = annualProduction * 0.0005;
             const treesPlanted = Math.round(annualProduction * 0.02);
 
-            // Calculate annual savings
+            // 3. Advanced annual savings with self-consumption and surplus
             const averagePrice = parseAveragePricePerKWh(data.averagePricePerKWh, targetCurrency);
             const annualConsumption = consumptionValue * 12; // Monthly to annual consumption
-            const energyOffsetBySolar = Math.min(annualProduction, annualConsumption); // Can't offset more than you consume
-            const annualSavings = energyOffsetBySolar * averagePrice; // Savings = offset energy * price per kWh
+            const savingsDetails = calculateAdvancedAnnualSavings(
+                annualProduction,
+                annualConsumption,
+                averagePrice,
+                wantsBattery
+            );
+            const annualSavings = savingsDetails.annualSavings;
 
-            // Calculate payback years (simple calculation)
-            const paybackYears = totalCost > 0 && annualSavings > 0 ? totalCost / annualSavings : null;
+            // Calculate payback years
+            const paybackYears = totalCost > 0 && annualSavings > 0 ? +(totalCost / annualSavings).toFixed(1) : null;
 
             // Calculate lifetime savings (assuming 25 year system life)
             const systemLifeYears = 25;
@@ -1118,15 +1224,17 @@ export async function POST(request: Request) {
                 consumptionValue,
                 annualConsumption,
                 annualProduction,
-                energyOffsetBySolar,
+                wantsBattery,
+                batteryCost,
+                savingsDetails,
                 averagePrice,
-                averagePriceInput: data.averagePricePerKWh,
                 annualSavings,
                 paybackYears,
                 totalCost,
                 totalLifetimeSavings
             });
-            // Cost breakdown (reuse logic, but skip incentives)
+
+            // Cost breakdown
             const sysInvCostPercent = getSystemInverterCostPercent(systemSettings, DEFAULT_SYSTEM_SETTINGS);
             const commLegPercent = DEFAULT_USER_SETTINGS.commissioningLegalizationPercentage;
             const warrantyPercent = DEFAULT_USER_SETTINGS.warrantySupportPercentage;
@@ -1134,33 +1242,19 @@ export async function POST(request: Request) {
             const sysPanelCompPercent = systemSettings?.panelComponentPercentage ?? DEFAULT_SYSTEM_SETTINGS.panelComponentPercentage;
             const structurePercent = DEFAULT_USER_SETTINGS.structureCostPercentage;
             const costBreakdown = {
-                serviciosInstalacionPuestaMarcha: totalCost * sysInvCostPercent,
-                costePanel: totalCost * sysPanelCompPercent,
-                costeInversor: totalCost * sysInvCostPercent,
-                puestaMarchaLegalizacion: totalCost * commLegPercent,
-                garantiaSoporteTecnico: totalCost * warrantyPercent,
-                herramientaMonitorizacion: totalCost * monitoringPercent,
-                estructura: totalCost * structurePercent,
+                serviciosInstalacionPuestaMarcha: Math.round(baseSolarCost * sysInvCostPercent),
+                costePanel: Math.round(baseSolarCost * sysPanelCompPercent),
+                costeInversor: Math.round(baseSolarCost * sysInvCostPercent),
+                puestaMarchaLegalizacion: Math.round(baseSolarCost * commLegPercent),
+                garantiaSoporteTecnico: Math.round(baseSolarCost * warrantyPercent),
+                herramientaMonitorizacion: Math.round(baseSolarCost * monitoringPercent),
+                estructura: Math.round(baseSolarCost * structurePercent),
+                bateria: batteryCost > 0 ? batteryCost : null,
             };
-            // Recalculate financial metrics if system size was updated
-            if (totalCost !== systemSize * effectivePriceKW) {
-                // Recalculate savings based on updated costs
-                const updatedAnnualSavings = energyOffsetBySolar * averagePrice;
-                const updatedPaybackYears = totalCost > 0 && updatedAnnualSavings > 0 ? totalCost / updatedAnnualSavings : paybackYears;
-                const updatedTotalLifetimeSavings = updatedAnnualSavings * systemLifeYears;
-
-                console.log(`[SUBMIT] ${country} - Updated financial calculations:`, {
-                    originalTotalCost: systemSize * effectivePriceKW,
-                    updatedTotalCost: totalCost,
-                    updatedAnnualSavings,
-                    updatedPaybackYears,
-                    updatedTotalLifetimeSavings
-                });
-            }
 
             // IVA rate based on country (Colombia 19%, Guatemala 12%)
             const ivaRate = getIvaRate(country);
-            const ivaAmount = totalCost * ivaRate;
+            const ivaAmount = Math.round(totalCost * ivaRate);
             const totalCostWithIva = totalCost + ivaAmount;
             // Save to database
             let senderEmail: string | undefined = 'InformeCalculadoraSolar';
@@ -1403,34 +1497,104 @@ export async function POST(request: Request) {
                 emailUser = await prisma.user.findUnique({ where: { id: domainUser.id } });
             }
 
-            // Fallback to admin user if no domain user found
+            // Fallback to admin user or environment variables if no domain user found
             if (!emailUser) {
-                emailUser = await prisma.user.findFirst({
-                    where: {
-                        email: 'info@wattify.es',
-                        smtpHost: { not: null },
-                        smtpUser: { not: null },
-                        smtpPassword: { not: null }
-                    }
-                });
+                try {
+                    emailUser = await prisma.user.findFirst({
+                        where: {
+                            email: 'info@wattify.es',
+                            smtpHost: { not: null },
+                            smtpUser: { not: null },
+                            smtpPassword: { not: null }
+                        }
+                    });
+                } catch {
+                    emailUser = null;
+                }
             }
 
-            if (emailUser) {
+            // Fallback to ENV variables for SMTP if DB user has no SMTP or DB failed
+            if ((!emailUser || !emailUser.smtpHost) && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+                emailUser = {
+                    smtpHost: process.env.SMTP_HOST,
+                    smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+                    smtpUser: process.env.SMTP_USER,
+                    smtpPassword: process.env.SMTP_PASS,
+                    smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER,
+                } as any;
+                console.log('[SUBMIT] Using SMTP configuration from environment variables (.env)');
+            }
+
+            if (emailUser && emailUser.smtpHost) {
                 senderEmail = emailUser.smtpFrom || 'InformeCalculadoraSolar';
                 // NO AWAIT: Fire and forget
                 sendSubmissionEmail(newSubmission, emailUser).catch(emailError => {
                     console.error('Background email task failed:', emailError);
                 });
-                console.log('Email task triggered in background using:', domainUser ? 'domain user' : 'admin fallback');
+                console.log('Email task triggered in background using:', domainUser ? 'domain user' : 'admin/env fallback');
             } else {
-                console.log('No user with SMTP configuration found - email not sent');
+                console.log('No user with SMTP configuration found and no SMTP_* in .env - email not sent');
             }
 
             console.log('Submission saved to database with ID:', newSubmission.id);
         } catch (dbError) {
             console.error('Database error saving submission:', dbError);
             if (process.env.NODE_ENV === 'development' || (origin && origin.includes('localhost'))) {
-                console.warn('[SUBMIT] Local dev mode: DB offline, returning simulated success for submit');
+                console.warn('[SUBMIT] Local dev mode: DB offline, creating mock submission for email dispatch');
+
+                // If SMTP is provided via .env, send the email even if DB is offline!
+                if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+                    const fallbackEmailUser: any = {
+                        smtpHost: process.env.SMTP_HOST,
+                        smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+                        smtpUser: process.env.SMTP_USER,
+                        smtpPassword: process.env.SMTP_PASS,
+                        smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER,
+                    };
+                    const mockSubmission: any = {
+                        id: `local-${Date.now()}`,
+                        createdAt: new Date(),
+                        address: data.location,
+                        city: city,
+                        country: country,
+                        latitude: parseFloat(data.latitude),
+                        longitude: parseFloat(data.longitude),
+                        userName: (`${data.name} ${data.surnames || ''}`).trim(),
+                        userEmail: data.email,
+                        userPhone: data.phone,
+                        googleSolarData: googleSolarData as any,
+                        totalCost: googleSolarData.estimatedInstallationCostAmount,
+                        firstYearSavings: googleSolarData.estimatedAnnualSavingsAmount,
+                        lifetimeSavings: googleSolarData.estimatedTotalLifetimeSavingsAmount,
+                        paybackYears: googleSolarData.paybackYears ? Math.round(googleSolarData.paybackYears) : null,
+                        currencyCode: finalCurrency,
+                        monthlyElectricityBillAmount: googleSolarData.monthlyElectricityBillAmount,
+                        averageKwhConsumption: googleSolarData.averageKwhConsumption,
+                        averagePricePerKWh: averagePrice,
+                        panelApplication: panelApplication,
+                        panelType: panelType,
+                        priceKWUsed: effectivePriceKW,
+                        baseInstallationCost: baseInstallationCostForDB,
+                        selectedPanelName: selectedPanelName,
+                        selectedInverterName: selectedInverterName,
+                        selectedInverterPeakPower: selectedInverterPeakPower,
+                        costBreakdownJson: costBreakdownResult === null ? undefined : { ...costBreakdownResult },
+                        ivaAmount: ivaAmountResult,
+                        totalCostWithIva: totalCostWithIvaResult,
+                        systemSize: finalSystemSize,
+                        orthophotoUrl: orthophotoUrl,
+                        orthophotoBase64: orthophotoBase64,
+                    };
+
+                    senderEmail = fallbackEmailUser.smtpFrom;
+                    sendSubmissionEmail(mockSubmission, fallbackEmailUser).catch(emailError => {
+                        console.error('[SUBMIT-LOCAL] Email sending failed with env SMTP:', emailError);
+                    });
+                    console.log('[SUBMIT-LOCAL] Email triggered using .env SMTP configuration');
+                } else {
+                    console.log('[SUBMIT-LOCAL] DB is offline and no SMTP_* variables in .env. To test email locally, add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM to .env');
+                }
+
                 return NextResponse.json(
                     {
                         success: true,

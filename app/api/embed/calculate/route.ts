@@ -24,7 +24,11 @@ import {
     DEFAULT_FINANCIAL_CONSTANTS_CO,
     DEFAULT_FINANCIAL_CONSTANTS_GT,
     getColombianFinancialConstants,
-    getGuatemalanFinancialConstants
+    getGuatemalanFinancialConstants,
+    getTieredInstallationPricePerKw,
+    calculateBatteryRequirement,
+    calculateAdvancedAnnualSavings,
+    type BatteryConfig
 } from '@/lib/solar-financial-calculations';
 import { getIvaRate, convertEurToCop, convertEurToGtq } from '@/lib/currency';
 import { extractRoofSegments } from '@/lib/google-solar';
@@ -44,6 +48,7 @@ interface EmbedCalculationData {
     panelType?: string;
     averagePriceCurrency?: string;
     selectedSegmentIndices?: number[] | string;
+    hasBattery?: boolean | string;
 }
 
 // New type for cost breakdown
@@ -55,6 +60,7 @@ interface CostBreakdown {
     garantiaSoporteTecnico: number | null;
     herramientaMonitorizacion: number | null;
     estructura: number | null;
+    bateria?: number | null;
 }
 
 // Helper function to extract hostname from origin URL
@@ -235,8 +241,27 @@ export async function POST(request: Request) {
         }
 
         // Validate coordinates
-        const latitude = parseFloat(data.latitude);
-        const longitude = parseFloat(data.longitude);
+        let latitude = parseFloat(data.latitude);
+        let longitude = parseFloat(data.longitude);
+
+        // If user marked a specific rooftop polygon, use the polygon centroid as the precise rooftop coordinate
+        if (data.polygonCoordinates) {
+            try {
+                const parsedCoords = typeof data.polygonCoordinates === 'string' ? JSON.parse(data.polygonCoordinates) : data.polygonCoordinates;
+                if (Array.isArray(parsedCoords) && parsedCoords.length >= 3) {
+                    const avgLat = parsedCoords.reduce((acc: number, p: { lat: number }) => acc + p.lat, 0) / parsedCoords.length;
+                    const avgLng = parsedCoords.reduce((acc: number, p: { lng: number }) => acc + p.lng, 0) / parsedCoords.length;
+                    if (!isNaN(avgLat) && !isNaN(avgLng)) {
+                        latitude = avgLat;
+                        longitude = avgLng;
+                        console.log('[CALC] Using polygon centroid for rooftop location:', { latitude, longitude });
+                    }
+                }
+            } catch (err) {
+                console.warn('[CALC] Could not parse polygonCoordinates for centroid:', err);
+            }
+        }
+
         if (isNaN(latitude) || isNaN(longitude)) {
             console.log('[CALC] Invalid coordinates:', { latitude: data.latitude, longitude: data.longitude });
             return NextResponse.json(
@@ -580,9 +605,23 @@ export async function POST(request: Request) {
                 const dailyAverage = annualProduction / 365;
                 const efficiency = 100 - loss;
                 const systemSize = finalPeakpower; // Use final calculated system size
-                console.log(`[CALC] Before cost calculation - systemSize: ${systemSize}kW, effectivePriceKW: ${effectivePriceKW} COP/kW`);
-                const totalCost = systemSize * effectivePriceKW;
-                console.log(`[CALC] Calculated totalCost: ${totalCost} COP`);
+
+                // 1. Tiered installation cost per kWp (Economy of scale)
+                effectivePriceKW = await getTieredInstallationPricePerKw(systemSize, country);
+                console.log(`[CALC] ${country} Tiered effectivePriceKW: ${effectivePriceKW} ${targetCurrency}/kW for ${systemSize}kWp`);
+
+                const baseSolarCost = Math.round(systemSize * effectivePriceKW);
+
+                // 2. Battery requirement and pricing
+                const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
+                let batteryConfig: BatteryConfig | null = null;
+                if (wantsBattery) {
+                    batteryConfig = await calculateBatteryRequirement(systemSize, country, targetCurrency as any);
+                }
+
+                const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+                const totalCost = baseSolarCost + batteryCost;
+                console.log(`[CALC] Calculated baseSolarCost: ${baseSolarCost}, batteryCost: ${batteryCost}, totalCost: ${totalCost} ${targetCurrency}`);
                 const costPerWatt = effectivePriceKW / 1000;
                 const co2Reduction = annualProduction * 0.0005;
                 const treesPlanted = Math.round(annualProduction * 0.02);
@@ -637,28 +676,35 @@ export async function POST(request: Request) {
                 }
                 // --- END: Panel and Inverter Selection for Colombia ---
 
-                // Cost breakdown (reuse logic, but skip incentives)
+                // Cost breakdown (applied to totalCost)
                 const sysPanelCompPercent = systemSettings?.panelComponentPercentage ?? DEFAULT_SYSTEM_SETTINGS.panelComponentPercentage;
                 const costBreakdown = {
-                    serviciosInstalacionPuestaMarcha: totalCost * installServicesPercent,
-                    costePanel: totalCost * sysPanelCompPercent,
-                    costeInversor: totalCost * invCostPercent,
-                    puestaMarchaLegalizacion: totalCost * commLegPercent,
-                    garantiaSoporteTecnico: totalCost * warrantyPercent,
-                    herramientaMonitorizacion: totalCost * monitoringPercent,
-                    estructura: totalCost * structurePercent,
+                    serviciosInstalacionPuestaMarcha: Math.round(baseSolarCost * installServicesPercent),
+                    costePanel: Math.round(baseSolarCost * sysPanelCompPercent),
+                    costeInversor: Math.round(baseSolarCost * invCostPercent),
+                    puestaMarchaLegalizacion: Math.round(baseSolarCost * commLegPercent),
+                    garantiaSoporteTecnico: Math.round(baseSolarCost * warrantyPercent),
+                    herramientaMonitorizacion: Math.round(baseSolarCost * monitoringPercent),
+                    estructura: Math.round(baseSolarCost * structurePercent),
+                    bateria: batteryCost > 0 ? batteryCost : null,
                 };
                 // IVA rate based on country (Colombia 19%, Guatemala 12%)
                 const ivaRate = getIvaRate(country);
-                const ivaAmount = totalCost * ivaRate;
+                const ivaAmount = Math.round(totalCost * ivaRate);
                 const totalCostWithIva = totalCost + ivaAmount;
-                // Calculate annual savings
-                const annualConsumption = consumptionValue * 12; // Monthly to annual consumption
-                const energyOffsetBySolar = Math.min(annualProduction, annualConsumption); // Can't offset more than you consume
-                const annualSavings = energyOffsetBySolar * averagePrice; // Savings = offset energy * price per kWh
 
-                // Calculate payback years (simple calculation)
-                const paybackYears = totalCost > 0 && annualSavings > 0 ? totalCost / annualSavings : null;
+                // 3. Advanced annual savings with self-consumption and surplus
+                const annualConsumption = consumptionValue * 12;
+                const savingsDetails = calculateAdvancedAnnualSavings(
+                    annualProduction,
+                    annualConsumption,
+                    averagePrice,
+                    wantsBattery
+                );
+                const annualSavings = savingsDetails.annualSavings;
+
+                // Calculate payback years
+                const paybackYears = totalCost > 0 && annualSavings > 0 ? +(totalCost / annualSavings).toFixed(1) : null;
 
                 // Calculate lifetime savings (assuming 25 year system life)
                 const systemLifeYears = 25;
@@ -668,9 +714,10 @@ export async function POST(request: Request) {
                     consumptionValue,
                     annualConsumption,
                     annualProduction,
-                    energyOffsetBySolar,
+                    wantsBattery,
+                    batteryCost,
+                    savingsDetails,
                     averagePrice,
-                    averagePriceInput: data.averagePricePerKWh,
                     annualSavings,
                     paybackYears,
                     totalCost,
@@ -715,11 +762,14 @@ export async function POST(request: Request) {
                         ivaAmount,
                         totalCostWithIva,
                         averagePricePerKWh: averagePrice,
-                        country: country,
-                        // Selected materials
+                        // Selected materials & Battery
                         selectedPanelName,
                         selectedInverterName,
                         selectedInverterPeakPower,
+                        hasBattery: wantsBattery,
+                        batteryCost: batteryCost,
+                        batteryCapacityKWh: batteryConfig ? batteryConfig.batteryCapacityKWh : 0,
+                        batteryTypeDescription: batteryConfig ? batteryConfig.batteryTypeDescription : null,
                         // Keep PVGIS data for debugging/reference
                         googleSolarData: pvgisData,
                         orthophotoUrl: orthophotoUrl,
@@ -889,7 +939,15 @@ export async function POST(request: Request) {
                 }
                 const roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices);
                 googleSolarData.roofSegments = roofSegments;
-                console.log('[CALC] Extracted roof segments count:', roofSegments.length);
+                googleSolarData.solarPanels = solarPotential.solarPanels || [];
+                googleSolarData.panelHeightMeters = solarPotential.panelHeightMeters || 1.8;
+                googleSolarData.panelWidthMeters = solarPotential.panelWidthMeters || 1.0;
+                // Get building bounding box from first segment or calculate from panels
+                if (solarPotential.roofSegmentStats && solarPotential.roofSegmentStats.length > 0) {
+                    const firstBox = solarPotential.roofSegmentStats[0].boundingBox;
+                    googleSolarData.boundingBox = firstBox || null;
+                }
+                console.log('[CALC] Extracted roof segments count:', roofSegments.length, 'and solar panels count:', (googleSolarData.solarPanels || []).length);
 
                 // --- Detailed Financial Calculation for Spain ---
                 const monthlyKWhEnergyConsumption = consumptionValue;
@@ -927,8 +985,16 @@ export async function POST(request: Request) {
                             console.log('[CALC] Selected panel from DB:', selectedPanel);
 
                             if (areaPerPanel && areaPerPanel > 0) {
-                                // Calculate max panels by area
-                                const maxPanelsByArea = Math.floor(solarPotential.maxArrayAreaMeters2 / areaPerPanel);
+                                // Calculate max panels by area (accounting for selected segments if specified)
+                                let effectiveArea = solarPotential.maxArrayAreaMeters2;
+                                let maxAllowedPanelsFromSegments = Infinity;
+                                if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
+                                    const selectedSegments = roofSegments.filter(s => selectedSegmentIndices!.includes(s.segmentIndex));
+                                    effectiveArea = selectedSegments.reduce((sum, s) => sum + (s.areaMeters2 || 0), 0) || solarPotential.maxArrayAreaMeters2;
+                                    maxAllowedPanelsFromSegments = selectedSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                                }
+
+                                const maxPanelsByArea = Math.floor(effectiveArea / areaPerPanel);
 
                                 // Calculate panels needed based on consumption and actual panel wattage
                                 // Use a more conservative approach: assume 1200 kWh per kWp per year for Spain
@@ -937,12 +1003,16 @@ export async function POST(request: Request) {
                                 const kwhPerPanelPerYear = (panelWattage / 1000) * 1200; // Conservative production estimate
                                 const panelsNeededByConsumption = Math.ceil(annualConsumption / kwhPerPanelPerYear);
 
-                                // Use the minimum of area-limited and consumption-based calculation
-                                const calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
+                                // Use the minimum of area-limited, consumption-based, and selected segments limits
+                                let calculatedPanelsCount = Math.min(panelsNeededByConsumption, maxPanelsByArea);
+                                if (maxAllowedPanelsFromSegments < Infinity && maxAllowedPanelsFromSegments > 0) {
+                                    calculatedPanelsCount = Math.min(calculatedPanelsCount, maxAllowedPanelsFromSegments);
+                                }
 
                                 console.log('[CALC] Panel calculation details:', {
                                     maxPanelsByArea,
                                     panelsNeededByConsumption,
+                                    maxAllowedPanelsFromSegments,
                                     calculatedPanelsCount,
                                     panelWattage,
                                     kwhPerPanelPerYear,
@@ -1049,19 +1119,52 @@ export async function POST(request: Request) {
                 // If no DB panel/material was used, fallback to Google config loop
                 if (!analysis && solarPotential.solarPanelConfigs && solarPotential.solarPanelConfigs.length > 0 && solarPotential.panelCapacityWatts) {
                     let bestAnalysis: DetailedFinancialAnalysis | null = null;
+                    
+                    // If user filtered roof segments, calculate the ratio of panels allowed on selected segments
+                    let segmentPanelCap = Infinity;
+                    let segmentEnergyFactor = 1.0;
+                    if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
+                        const totalRoofPanels = roofSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                        const selectedRoofPanels = roofSegments
+                            .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
+                            .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                        
+                        if (totalRoofPanels > 0) {
+                            segmentPanelCap = selectedRoofPanels;
+                            segmentEnergyFactor = selectedRoofPanels / totalRoofPanels;
+                        }
+                    }
+
                     for (const config of solarPotential.solarPanelConfigs) {
                         if (!config.panelsCount || !config.yearlyEnergyDcKwh) continue;
+                        
+                        // Respect segment cap if selected
+                        let effectivePanelsCount = config.panelsCount;
+                        let effectiveYearlyEnergyDcKwh = config.yearlyEnergyDcKwh;
+                        
+                        if (segmentPanelCap < Infinity) {
+                            // If this config exceeds the selected roof capacity, cap it or check roofSegmentSummaries
+                            if (config.roofSegmentSummaries && config.roofSegmentSummaries.length > 0) {
+                                const selectedSummaries = config.roofSegmentSummaries.filter(rss => selectedSegmentIndices!.includes(rss.segmentIndex));
+                                effectivePanelsCount = selectedSummaries.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                                effectiveYearlyEnergyDcKwh = selectedSummaries.reduce((sum, s) => sum + (s.yearlyEnergyDcKwh || 0), 0);
+                            } else {
+                                effectivePanelsCount = Math.min(config.panelsCount, segmentPanelCap);
+                                effectiveYearlyEnergyDcKwh = config.yearlyEnergyDcKwh * segmentEnergyFactor;
+                            }
+                        }
 
-                        const initialAcKwhPerYear = calculateInitialAcKwhPerYear(config.yearlyEnergyDcKwh, {
+                        if (effectivePanelsCount <= 0 || effectiveYearlyEnergyDcKwh <= 0) continue;
+
+                        const initialAcKwhPerYear = calculateInitialAcKwhPerYear(effectiveYearlyEnergyDcKwh, {
                             ...FINANCIAL_CONSTANTS,
                             averagePricePerKWh: averagePrice,
                             installationLifeSpan: solarPotential.panelLifetimeYears ?? FINANCIAL_CONSTANTS.installationLifeSpan,
                         });
-                        const installationSizeKW = calculateInstallationSizeKW(config.panelsCount, solarPotential.panelCapacityWatts);
+                        const installationSizeKW = calculateInstallationSizeKW(effectivePanelsCount, solarPotential.panelCapacityWatts);
 
                         // --- NEW: Base Installation Cost using effectivePriceKW ---
                         const baseInstallationCost = installationSizeKW * effectivePriceKW;
-                        console.log(`[CALC] Base installation cost (Google config path): ${baseInstallationCost} (Size: ${installationSizeKW}kW, Price/kW: ${effectivePriceKW})`);
 
                         // --- INCENTIVE LOGIC FOR SPAIN ---
                         let incentives = 0;
@@ -1086,8 +1189,8 @@ export async function POST(request: Request) {
                         const annualSavings = totalLifetimeSavings / financialConstantsWithIncentives.installationLifeSpan;
 
                         const currentAnalysis: DetailedFinancialAnalysis = {
-                            panelsCount: config.panelsCount,
-                            yearlyEnergyDcKwh: config.yearlyEnergyDcKwh,
+                            panelsCount: effectivePanelsCount,
+                            yearlyEnergyDcKwh: effectiveYearlyEnergyDcKwh,
                             initialAcKwhPerYear,
                             installationSizeKW,
                             installationCost: baseInstallationCost,
@@ -1099,7 +1202,6 @@ export async function POST(request: Request) {
                             annualSavings,
                             paybackYears
                         };
-                        console.log('[CALC] Analysis for config:', currentAnalysis);
 
                         if (!bestAnalysis || currentAnalysis.totalLifetimeSavings > bestAnalysis.totalLifetimeSavings) {
                             bestAnalysis = currentAnalysis;
@@ -1109,6 +1211,76 @@ export async function POST(request: Request) {
                         analysis = bestAnalysis;
                         usedSource = 'google';
                     }
+                }
+
+                // If analysis is STILL null (e.g. Google buildingInsights has no precomputed solarPanelConfigs or DB panel lookup failed),
+                // dimension system based on the user's monthly kWh consumption and standard solar yield
+                if (!analysis) {
+                    const annualConsumption = annualKWhEnergyConsumption;
+                    const panelWattage = solarPotential.panelCapacityWatts || 450;
+                    // Standard yield in Spain: ~1400 kWh/kWp/year
+                    const sunshineHours = googleSolarData.maxSunshineHoursPerYear || 1600;
+                    const yieldPerKwp = Math.min(1650, Math.max(1250, sunshineHours * 0.82));
+                    const kwhPerPanelPerYear = (panelWattage / 1000) * yieldPerKwp;
+                    // Size installation to cover ~100% of consumption
+                    let targetPanels = Math.max(4, Math.ceil(annualConsumption / kwhPerPanelPerYear));
+
+                    // Cap to maxArrayPanelsCount if available and positive
+                    if (solarPotential.maxArrayPanelsCount && solarPotential.maxArrayPanelsCount > 0) {
+                        targetPanels = Math.min(targetPanels, solarPotential.maxArrayPanelsCount);
+                    }
+                    // Cap to selected segments capacity if user selected specific vertientes
+                    if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
+                        const selectedCap = roofSegments
+                            .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
+                            .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                        if (selectedCap > 0) {
+                            targetPanels = Math.min(targetPanels, selectedCap);
+                        }
+                    }
+
+                    const installationSizeKW = +(targetPanels * (panelWattage / 1000)).toFixed(2);
+                    const conservativeAcProduction = Math.round(installationSizeKW * yieldPerKwp);
+                    const yearlyEnergyDcKwh = Math.round(conservativeAcProduction / FINANCIAL_CONSTANTS.dcToAcDerate);
+                    const baseInstallationCost = Math.round(installationSizeKW * effectivePriceKW);
+
+                    let incentives = 0;
+                    if (baseInstallationCost > 0) {
+                        incentives = calculateSpanishIncentive(baseInstallationCost);
+                    }
+
+                    const financialConstantsWithIncentives = {
+                        ...FINANCIAL_CONSTANTS,
+                        averagePricePerKWh: averagePrice,
+                        installationLifeSpan: solarPotential.panelLifetimeYears ?? FINANCIAL_CONSTANTS.installationLifeSpan,
+                        incentives,
+                    };
+
+                    const initialAcKwhPerYear = conservativeAcProduction;
+                    const lifetimeProductionAcKwh = calculateLifetimeProductionAcKwh(initialAcKwhPerYear, financialConstantsWithIncentives);
+                    const remainingLifetimeUtilityBill = calculateRemainingLifetimeUtilityBill(annualConsumption, initialAcKwhPerYear, financialConstantsWithIncentives);
+                    const totalCostWithSolar = calculateTotalCostWithSolar(baseInstallationCost, remainingLifetimeUtilityBill, financialConstantsWithIncentives);
+                    const costOfElectricityWithoutSolar = calculateCostOfElectricityWithoutSolar(annualConsumption, financialConstantsWithIncentives);
+                    const totalLifetimeSavings = calculateTotalSavings(costOfElectricityWithoutSolar, totalCostWithSolar);
+                    const paybackYears = calculatePaybackYears(baseInstallationCost, annualConsumption, initialAcKwhPerYear, financialConstantsWithIncentives);
+                    const annualSavings = totalLifetimeSavings / financialConstantsWithIncentives.installationLifeSpan;
+
+                    analysis = {
+                        panelsCount: targetPanels,
+                        yearlyEnergyDcKwh,
+                        initialAcKwhPerYear,
+                        installationSizeKW,
+                        installationCost: baseInstallationCost,
+                        lifetimeProductionAcKwh,
+                        remainingLifetimeUtilityBill,
+                        totalCostWithSolar,
+                        costOfElectricityWithoutSolar,
+                        totalLifetimeSavings,
+                        annualSavings,
+                        paybackYears
+                    };
+                    usedSource = 'google';
+                    console.log('[CALC] Sized system via consumption fallback:', analysis);
                 }
 
                 // Set results in googleSolarData if analysis was performed
@@ -1177,26 +1349,57 @@ export async function POST(request: Request) {
                     }
                     // --- END: Inverter Selection ---
 
+                    // --- BEGIN: Battery and Advanced Savings for Spain ---
+                    const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
+                    const systemSizeKW = analysis.installationSizeKW ?? 0;
+                    let batteryConfig: BatteryConfig | null = null;
+                    if (wantsBattery && systemSizeKW > 0) {
+                        batteryConfig = await calculateBatteryRequirement(systemSizeKW, 'spain', 'EUR');
+                    }
+
+                    const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+                    const baseSolarCost = analysis.installationCost ?? 0;
+                    const finalTotalCost = baseSolarCost + batteryCost;
+
+                    // Recalculate annual savings using advanced self-consumption model
+                    const annualConsumption = annualKWhEnergyConsumption;
+                    const annualProductionKWh = analysis.initialAcKwhPerYear ?? (systemSizeKW * 1400);
+                    const savingsDetails = calculateAdvancedAnnualSavings(
+                        annualProductionKWh,
+                        annualConsumption,
+                        averagePrice,
+                        wantsBattery
+                    );
+                    const updatedAnnualSavings = savingsDetails.annualSavings;
+                    const updatedPaybackYears = finalTotalCost > 0 && updatedAnnualSavings > 0 ? +(finalTotalCost / updatedAnnualSavings).toFixed(1) : null;
+                    const updatedLifetimeSavings = updatedAnnualSavings * 25;
+
+                    // Update googleSolarData fields
+                    googleSolarData.estimatedInstallationCostAmount = finalTotalCost;
+                    googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
+                    googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
+                    googleSolarData.paybackYears = updatedPaybackYears;
+
                     // --- BEGIN: Cost Breakdown and IVA ---
-                    const currentInstallationCost = analysis.installationCost ?? 0;
-                    if (currentInstallationCost > 0) {
+                    if (finalTotalCost > 0) {
                         const sysPanelCompPercent = systemSettings?.panelComponentPercentage ?? DEFAULT_SYSTEM_SETTINGS.panelComponentPercentage;
 
                         costBreakdown = {
-                            serviciosInstalacionPuestaMarcha: currentInstallationCost * installServicesPercent,
-                            costePanel: currentInstallationCost * sysPanelCompPercent,
-                            costeInversor: currentInstallationCost * invCostPercent,
-                            puestaMarchaLegalizacion: currentInstallationCost * commLegPercent,
-                            garantiaSoporteTecnico: currentInstallationCost * warrantyPercent,
-                            herramientaMonitorizacion: currentInstallationCost * monitoringPercent,
-                            estructura: currentInstallationCost * structurePercent,
+                            serviciosInstalacionPuestaMarcha: Math.round(baseSolarCost * installServicesPercent),
+                            costePanel: Math.round(baseSolarCost * sysPanelCompPercent),
+                            costeInversor: Math.round(baseSolarCost * invCostPercent),
+                            puestaMarchaLegalizacion: Math.round(baseSolarCost * commLegPercent),
+                            garantiaSoporteTecnico: Math.round(baseSolarCost * warrantyPercent),
+                            herramientaMonitorizacion: Math.round(baseSolarCost * monitoringPercent),
+                            estructura: Math.round(baseSolarCost * structurePercent),
+                            bateria: batteryCost > 0 ? batteryCost : null,
                         };
 
                         const ivaRate = getIvaRate(country);
-                        ivaAmount = currentInstallationCost * ivaRate;
-                        totalCostWithIva = currentInstallationCost + ivaAmount;
+                        ivaAmount = Math.round(finalTotalCost * ivaRate);
+                        totalCostWithIva = finalTotalCost + ivaAmount;
 
-                        console.log('[CALC] Cost breakdown:', costBreakdown);
+                        console.log('[CALC] Cost breakdown with battery:', costBreakdown);
                         console.log(`[CALC] IVA Amount: ${ivaAmount}, Total with IVA: ${totalCostWithIva}`);
                     }
                     // --- END: Cost Breakdown and IVA ---

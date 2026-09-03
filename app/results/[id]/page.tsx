@@ -132,14 +132,17 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                 <h2 className="text-lg font-bold tracking-tight">Desglose de Costes</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
-                <div><span className="font-medium">Servicios instalación y puesta en marcha (30%):</span> {formatCurrency(costBreakdown?.serviciosInstalacionPuestaMarcha, currencyCode)}</div>
+                <div><span className="font-medium">Servicios instalación y puesta en marcha (25%):</span> {formatCurrency(costBreakdown?.serviciosInstalacionPuestaMarcha, currencyCode)}</div>
                 <div><span className="font-medium">Coste paneles (25%):</span> {formatCurrency(costBreakdown?.costePanel, currencyCode)}</div>
                 <div><span className="font-medium">Coste inversor (15%):</span> {formatCurrency(costBreakdown?.costeInversor, currencyCode)}</div>
                 <div><span className="font-medium">Puesta en marcha y legalización (15%):</span> {formatCurrency(costBreakdown?.puestaMarchaLegalizacion, currencyCode)}</div>
                 <div><span className="font-medium">Garantía y soporte técnico (5%):</span> {formatCurrency(costBreakdown?.garantiaSoporteTecnico, currencyCode)}</div>
                 <div><span className="font-medium">Herramienta de monitorización (10%):</span> {formatCurrency(costBreakdown?.herramientaMonitorizacion, currencyCode)}</div>
-                <div><span className="font-medium">IVA (21%):</span> {formatCurrency(ivaAmount, currencyCode)}</div>
-                <div><span className="font-medium">Coste total con IVA:</span> {formatCurrency(totalCostWithIva, currencyCode)}</div>
+                {costBreakdown?.bateria ? (
+                  <div><span className="font-medium text-emerald-700">Batería de Almacenamiento:</span> {formatCurrency(costBreakdown?.bateria, currencyCode)}</div>
+                ) : null}
+                <div><span className="font-medium">IVA:</span> {formatCurrency(ivaAmount, currencyCode)}</div>
+                <div><span className="font-medium font-bold">Coste total con IVA:</span> {formatCurrency(totalCostWithIva, currencyCode)}</div>
               </div>
             </section>
 

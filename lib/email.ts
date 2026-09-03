@@ -141,7 +141,7 @@ export async function sendAdminNotification(message: string, subject: string = '
     }
 }
 
-export async function sendSubmissionEmail(submission: Submission, user: User) {
+export async function sendSubmissionEmail(submission: Partial<Submission>, user: Partial<User>) {
     if (!user.smtpHost || !user.smtpPort || !user.smtpUser || !user.smtpPassword || !user.smtpFrom) {
         throw new Error('SMTP configuration is missing');
     }
@@ -150,25 +150,31 @@ export async function sendSubmissionEmail(submission: Submission, user: User) {
         throw new Error('Invalid SMTP configuration format');
     }
 
+    const portNum = Number(user.smtpPort);
+    const isSecure = portNum === 465;
+
     const config: EmailConfig = {
         host: user.smtpHost,
-        port: user.smtpPort,
-        secure: false,
+        port: portNum,
+        secure: isSecure,
         auth: {
             user: user.smtpUser,
             pass: user.smtpPassword,
         },
         from: user.smtpFrom,
+        tls: {
+            rejectUnauthorized: false
+        }
     };
 
-    console.log('Attempting SMTP connection with host:', config.host, 'port:', config.port);
+    console.log('[EMAIL] Attempting SMTP connection with host:', config.host, 'port:', config.port, 'secure:', isSecure);
 
     const transporter = nodemailer.createTransport(config);
     try {
         await transporter.verify();
-        console.log('SMTP connection verified successfully');
+        console.log('[EMAIL] SMTP connection verified successfully');
     } catch (error: any) {
-        console.error('SMTP connection test failed:', error);
+        console.error('[EMAIL] SMTP connection test failed:', error);
         throw new Error(`Failed to connect to SMTP server: ${error?.message || 'Unknown error'}`);
     }
 
@@ -227,7 +233,7 @@ export async function sendSubmissionEmail(submission: Submission, user: User) {
 
     const safeCreatedAt = submission.createdAt instanceof Date
         ? submission.createdAt
-        : new Date(submission.createdAt);
+        : (submission.createdAt ? new Date(submission.createdAt) : new Date());
 
     // --- PDF PROPS ---
     const pdfProps: SubmissionPDFProps = {
