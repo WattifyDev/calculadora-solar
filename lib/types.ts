@@ -132,6 +132,7 @@ export interface RoofSegmentDetails {
   performanceLabel: string;
   efficiencyPercentage: number;
   isSelected: boolean;
+  isRecommended?: boolean;
 }
 
 // New interface for googleSolarData content, including Google Solar fields

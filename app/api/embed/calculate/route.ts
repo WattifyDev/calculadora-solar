@@ -938,7 +938,14 @@ export async function POST(request: Request) {
                         }
                     }
                 }
-                const roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices);
+                // --- Detailed Financial Calculation for Spain ---
+                const monthlyKWhEnergyConsumption = consumptionValue;
+                const annualKWhEnergyConsumption = calculateAnnualKWhEnergyConsumption(monthlyKWhEnergyConsumption);
+                googleSolarData.averageKwhConsumption = monthlyKWhEnergyConsumption;
+                googleSolarData.monthlyElectricityBillAmount = monthlyKWhEnergyConsumption * averagePrice;
+                console.log('[CALC] Consumption:', { monthlyKWhEnergyConsumption, annualKWhEnergyConsumption });
+
+                const roofSegments = extractRoofSegments(solarPotential, selectedSegmentIndices, annualKWhEnergyConsumption);
                 googleSolarData.roofSegments = roofSegments;
                 googleSolarData.solarPanels = solarPotential.solarPanels || [];
                 googleSolarData.panelHeightMeters = solarPotential.panelHeightMeters || 1.8;
@@ -953,13 +960,6 @@ export async function POST(request: Request) {
                     googleSolarData.boundingBox = firstBox || null;
                 }
                 console.log('[CALC] Extracted roof segments count:', roofSegments.length, 'and solar panels count:', (googleSolarData.solarPanels || []).length);
-
-                // --- Detailed Financial Calculation for Spain ---
-                const monthlyKWhEnergyConsumption = consumptionValue;
-                const annualKWhEnergyConsumption = calculateAnnualKWhEnergyConsumption(monthlyKWhEnergyConsumption);
-                googleSolarData.averageKwhConsumption = monthlyKWhEnergyConsumption;
-                googleSolarData.monthlyElectricityBillAmount = monthlyKWhEnergyConsumption * averagePrice;
-                console.log('[CALC] Consumption:', { monthlyKWhEnergyConsumption, annualKWhEnergyConsumption });
 
                 let analysis: DetailedFinancialAnalysis | null = null;
                 let usedSource: 'db' | 'google' = 'google';
@@ -993,16 +993,15 @@ export async function POST(request: Request) {
                                 // Calculate max panels by area (accounting for selected segments if specified)
                                 let effectiveArea = solarPotential.maxArrayAreaMeters2;
                                 let maxAllowedPanelsFromSegments = Infinity;
-                                if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
-                                    const selectedSegments = roofSegments.filter(s => selectedSegmentIndices!.includes(s.segmentIndex));
-                                    effectiveArea = selectedSegments.reduce((sum, s) => sum + (s.areaMeters2 || 0), 0) || solarPotential.maxArrayAreaMeters2;
-                                    maxAllowedPanelsFromSegments = selectedSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                                const preselectedSegments = roofSegments.filter(s => s.isSelected);
+                                if (preselectedSegments.length > 0) {
+                                    maxAllowedPanelsFromSegments = preselectedSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                                    effectiveArea = preselectedSegments.reduce((sum, s) => sum + (s.areaMeters2 || 0), 0) || solarPotential.maxArrayAreaMeters2;
                                 }
 
                                 const maxPanelsByArea = Math.floor(effectiveArea / areaPerPanel);
 
                                 // Calculate panels needed based on consumption and actual panel wattage
-                                // Use a more conservative approach: assume 1200 kWh per kWp per year for Spain
                                 const annualConsumption = calculateAnnualKWhEnergyConsumption(consumptionValue);
                                 const panelWattage = solarPotential.panelCapacityWatts || 400; // Default to 400W if not available
                                 const kwhPerPanelPerYear = (panelWattage / 1000) * 1200; // Conservative production estimate

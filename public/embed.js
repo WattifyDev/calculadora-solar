@@ -2381,40 +2381,86 @@
         </div>
       `;
 
+      // Separate segments into Prioritized (checked/recommended) and Other Available (unchecked/expansion)
+      const prioritizedSegments = [];
+      const expansionSegments = [];
+
       data.roofSegments.forEach((seg, idx) => {
         const isChecked = seg.isSelected !== undefined ? seg.isSelected : (seg.selected !== false);
+        const item = { ...seg, originalIdx: idx, isChecked };
+        if (isChecked) {
+          prioritizedSegments.push(item);
+        } else {
+          expansionSegments.push(item);
+        }
+      });
+
+      const renderSegmentCard = (seg) => {
         const badgeGrade = seg.performanceGrade || seg.performanceRating || 'B';
         const orientationLabel = seg.orientationLabel || seg.orientation || 'Sur';
         const pitch = Math.round(seg.pitchDegrees || 20);
         const area = Math.round((seg.areaMeters2 || 0) * 10) / 10;
-        // If panelsCount is 0, estimate potential capacity by area (approx 1 panel per 2m²)
         const segPanels = seg.panelsCount > 0 ? seg.panelsCount : Math.max(1, Math.floor(area / 2.2));
 
-        segmentsHtml += `
-          <div class="solar-calc__segment-card">
-            <div style="display: flex; align-items: center; gap: 12px;">
+        return `
+          <div class="solar-calc__segment-card" style="margin-bottom: 8px; border-left: 4px solid ${seg.isChecked ? '#CBFF54' : '#cbd5e1'};">
+            <div style="display: flex; align-items: center; gap: 10px;">
               <input 
                 type="checkbox" 
                 class="solar-calc__segment-checkbox-${containerId}" 
                 value="${seg.segmentIndex}" 
-                ${isChecked ? 'checked' : ''} 
-                style="width: 18px !important; height: 18px !important; cursor: pointer !important;"
+                ${seg.isChecked ? 'checked' : ''} 
+                style="width: 18px !important; height: 18px !important; cursor: pointer !important; accent-color: #063231;"
               />
               <div style="text-align: left;">
-                <div style="font-weight: 600; font-size: 14px; color: #1e293b;">
-                  Vertiente ${idx + 1}: ${orientationLabel} (${Math.round(seg.azimuthDegrees || 0)}°)
+                <div style="font-weight: 700; font-size: 13px; color: #1e293b;">
+                  Vertiente ${seg.originalIdx + 1}: ${orientationLabel} (${Math.round(seg.azimuthDegrees || 0)}°)
                 </div>
-                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
-                  Inclinación ${pitch}° • <strong>${segPanels} paneles</strong> (${area} m²)
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                  ${pitch}° • <strong>${segPanels} paneles</strong> (${area} m²)
                 </div>
               </div>
             </div>
             <div>
-              <span class="solar-calc__segment-badge grade-${badgeGrade}">Grado ${badgeGrade}</span>
+              <span class="solar-calc__segment-badge grade-${badgeGrade}" style="font-size: 11px; padding: 2px 6px;">Grado ${badgeGrade}</span>
             </div>
           </div>
         `;
-      });
+      };
+
+      segmentsHtml += `
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px;">
+          <!-- Columna Izquierda: Vertientes Prioritarias Recomendadas -->
+          <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
+                <span>🎯</span> Vertientes Prioritarias (${prioritizedSegments.length})
+              </span>
+              <span style="font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px;">
+                Óptimas por Consumo
+              </span>
+            </div>
+            <div>
+              ${prioritizedSegments.length > 0 ? prioritizedSegments.map(renderSegmentCard).join('') : '<p style="font-size: 12px; color: #64748b; font-style: italic;">Sin vertientes seleccionadas</p>'}
+            </div>
+          </div>
+
+          <!-- Columna Derecha: Vertientes de Ampliación Disponibles -->
+          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px;">
+                <span>➕</span> Vertientes de Ampliación (${expansionSegments.length})
+              </span>
+              <span style="font-size: 11px; font-weight: 600; color: #64748b; background: #e2e8f0; padding: 2px 8px; border-radius: 999px;">
+                Disponibles
+              </span>
+            </div>
+            <div>
+              ${expansionSegments.length > 0 ? expansionSegments.map(renderSegmentCard).join('') : '<p style="font-size: 12px; color: #64748b; font-style: italic;">Todas las vertientes viables están en uso</p>'}
+            </div>
+          </div>
+        </div>
+      `;
 
       segmentsContainer.innerHTML = segmentsHtml;
 

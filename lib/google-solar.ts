@@ -167,7 +167,8 @@ export function getPerformanceRating(azimuthDegrees: number, pitchDegrees: numbe
 
 export function extractRoofSegments(
     solarPotential: SolarPotential,
-    selectedSegmentIndices?: number[]
+    selectedSegmentIndices?: number[],
+    targetConsumptionKWh?: number
 ): RoofSegmentDetails[] {
     if (!solarPotential.roofSegmentStats || !Array.isArray(solarPotential.roofSegmentStats)) {
         return [];
@@ -182,18 +183,15 @@ export function extractRoofSegments(
         }
     }
 
-    return solarPotential.roofSegmentStats.map((stat, index) => {
+    // First map all raw segments
+    const allSegments = solarPotential.roofSegmentStats.map((stat, index) => {
         const pitch = Math.round(stat.pitchDegrees);
         const azimuth = Math.round(stat.azimuthDegrees);
         const orientationLabel = getOrientationLabel(azimuth);
         const perf = getPerformanceRating(azimuth, pitch);
         const areaMeters2 = Math.round(stat.stats?.areaMeters2 || 0);
         const sunshineHoursPerYear = Math.round(stat.stats?.sunshineQuantiles?.[5] || solarPotential.maxSunshineHoursPerYear || 1400);
-        const panelsCount = panelsBySegment.get(index) || 0;
-        
-        const isSelected = selectedSegmentIndices && selectedSegmentIndices.length > 0
-            ? selectedSegmentIndices.includes(index)
-            : perf.grade !== 'D' && panelsCount > 0;
+        const panelsCount = panelsBySegment.get(index) || (areaMeters2 > 0 ? Math.max(1, Math.floor(areaMeters2 / 2.2)) : 0);
 
         return {
             segmentIndex: index,
@@ -206,7 +204,71 @@ export function extractRoofSegments(
             performanceGrade: perf.grade,
             performanceLabel: perf.label,
             efficiencyPercentage: perf.efficiencyPercentage,
-            isSelected,
+            isRecommended: false,
+            isSelected: false,
+        };
+    });
+
+    // If user explicitly selected segments via UI checkbox, respect their exact manual choice
+    if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
+        return allSegments.map(seg => ({
+            ...seg,
+            isSelected: selectedSegmentIndices.includes(seg.segmentIndex),
+            isRecommended: seg.performanceGrade === 'A' || seg.performanceGrade === 'B',
+        }));
+    }
+
+    // Intelligent initial preselection:
+    // Estimate target panels needed based on consumption (default ~400W panel, ~1300 kWh/kWp in Spain)
+    const panelWattage = solarPotential.panelCapacityWatts || 400;
+    const kwhPerPanelPerYear = (panelWattage / 1000) * 1300;
+    const targetPanelsNeeded = targetConsumptionKWh && targetConsumptionKWh > 0
+        ? Math.ceil(targetConsumptionKWh / kwhPerPanelPerYear)
+        : 18;
+
+    // Rank segments by efficiency: Grade A > B > C > D, then by panelsCount descending
+    const gradeWeight: Record<string, number> = { 'A': 4, 'B': 3, 'C': 2, 'D': 1 };
+    const sortedIndices = [...allSegments]
+        .filter(s => s.panelsCount > 0)
+        .sort((a, b) => {
+            const weightA = gradeWeight[a.performanceGrade] || 0;
+            const weightB = gradeWeight[b.performanceGrade] || 0;
+            if (weightB !== weightA) return weightB - weightA;
+            return b.panelsCount - a.panelsCount;
+        })
+        .map(s => s.segmentIndex);
+
+    // Greedily fill up to targetPanelsNeeded with the best segments
+    const recommendedSet = new Set<number>();
+    let accumulatedPanels = 0;
+
+    for (const idx of sortedIndices) {
+        const seg = allSegments.find(s => s.segmentIndex === idx);
+        if (!seg) continue;
+
+        // Skip Grade D in recommended initial selection if possible
+        if (seg.performanceGrade === 'D' && recommendedSet.size > 0) continue;
+
+        recommendedSet.add(idx);
+        accumulatedPanels += seg.panelsCount;
+
+        // Once we have satisfied the customer's consumption, stop adding to recommended set
+        if (accumulatedPanels >= targetPanelsNeeded) {
+            break;
+        }
+    }
+
+    // If nothing was selected (rare), select at least the top segment
+    if (recommendedSet.size === 0 && sortedIndices.length > 0) {
+        recommendedSet.add(sortedIndices[0]);
+    }
+
+    return allSegments.map(seg => {
+        const isRec = recommendedSet.has(seg.segmentIndex);
+        return {
+            ...seg,
+            isRecommended: isRec,
+            isSelected: isRec, // Preselected initially
         };
     });
 } 
