@@ -35,6 +35,82 @@ import {
 } from '@/lib/solar-financial-calculations';
 import { getIvaRate, convertEurToCop, convertEurToGtq } from '@/lib/currency';
 
+async function dispatchCalculadoraToN8n(submission: any, country?: string) {
+    try {
+        const n8nWebhookUrl = process.env.N8N_LEADS_WEBHOOK_URL || 'https://api-n8n.wattify.es/webhook/formbricks-leads';
+        const gsd = submission.googleSolarData || {};
+        const panelCount = submission.panelCount || gsd.panelsCount || gsd.maxArrayPanelsCount || null;
+        const annualProduction = submission.annualProduction || gsd.yearlyEnergyDcKwh || null;
+        const systemSize = submission.systemSize || gsd.installationSizeKW || null;
+        const co2Reduction = submission.co2Reduction || gsd.carbonOffsetKg || (annualProduction ? Math.round(annualProduction * 0.3) : null);
+        const treesPlanted = submission.treesPlanted || gsd.treesPlanted || (co2Reduction ? Math.round(co2Reduction / 20) : null);
+        const totalCost = submission.totalCostWithIva || submission.totalCost || gsd.estimatedInstallationCostAmount || null;
+        const annualSavings = submission.firstYearSavings || gsd.estimatedAnnualSavingsAmount || null;
+        const paybackYears = submission.paybackYears || gsd.paybackYears || null;
+        const pdfUrl = `https://calculadora-solar.wattify.es/api/pdf/${submission.id}`;
+
+        const payload = {
+            source: 'calculadora_solar',
+            id: submission.id,
+            submissionId: submission.id,
+            data: {
+                name: submission.userName || 'Cliente Calculadora',
+                email: submission.userEmail || '',
+                phone: submission.userPhone || '',
+                location: submission.address || '',
+                city: submission.city || '',
+                country: country || submission.country || 'spain',
+                systemSize: systemSize,
+                panelCount: panelCount,
+                annualProduction: annualProduction,
+                totalCost: totalCost,
+                annualSavings: annualSavings,
+                paybackYears: paybackYears,
+                co2Reduction: co2Reduction,
+                treesPlanted: treesPlanted,
+                monthlyElectricityBillAmount: submission.monthlyElectricityBillAmount || gsd.monthlyElectricityBillAmount || null,
+                currencyCode: submission.currencyCode || 'EUR',
+                orthophotoUrl: submission.orthophotoUrl || null,
+                pdfUrl: pdfUrl,
+                panelApplication: submission.panelApplication || 'RESIDENCIAL',
+                latitude: submission.latitude,
+                longitude: submission.longitude
+            },
+            userName: submission.userName || 'Cliente Calculadora',
+            userEmail: submission.userEmail || '',
+            userPhone: submission.userPhone || '',
+            address: submission.address || '',
+            city: submission.city || '',
+            country: country || submission.country || 'spain',
+            systemSize: systemSize,
+            panelCount: panelCount,
+            annualProduction: annualProduction,
+            totalCost: totalCost,
+            totalCostWithIva: submission.totalCostWithIva,
+            firstYearSavings: annualSavings,
+            paybackYears: paybackYears,
+            co2Reduction: co2Reduction,
+            treesPlanted: treesPlanted,
+            orthophotoUrl: submission.orthophotoUrl,
+            pdfUrl: pdfUrl,
+            googleSolarData: gsd
+        };
+
+        fetch(n8nWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(res => {
+            console.log(`[N8N DISPATCH] Calculadora lead ${submission.id} (${submission.userName}) sent to n8n, status: ${res.status}`);
+        }).catch(err => {
+            console.error('[N8N DISPATCH ERROR] Failed to dispatch to n8n:', err.message);
+        });
+    } catch (e: any) {
+        console.error('[N8N DISPATCH EXCEPTION]', e?.message || e);
+    }
+}
+
+
 //Example response from google maps api:
 // Received submission (data before saving): {
 //     consumption: '5',
@@ -1346,6 +1422,7 @@ export async function POST(request: Request) {
                     console.log('No user with SMTP configuration found - email not sent');
                 }
                 // Return response
+                dispatchCalculadoraToN8n(newSubmission, country);
                 return NextResponse.json(
                     {
                         success: true,
@@ -1541,6 +1618,7 @@ export async function POST(request: Request) {
             }
 
             console.log('Submission saved to database with ID:', newSubmission.id);
+            dispatchCalculadoraToN8n(newSubmission, country);
         } catch (dbError) {
             console.error('Database error saving submission:', dbError);
             if (process.env.NODE_ENV === 'development' || (origin && origin.includes('localhost'))) {
@@ -1595,6 +1673,7 @@ export async function POST(request: Request) {
                         console.error('[SUBMIT-LOCAL] Email sending failed with env SMTP:', emailError);
                     });
                     console.log('[SUBMIT-LOCAL] Email triggered using .env SMTP configuration');
+                    dispatchCalculadoraToN8n(mockSubmission, country);
                 } else {
                     console.log('[SUBMIT-LOCAL] DB is offline and no SMTP_* variables in .env. To test email locally, add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM to .env');
                 }

@@ -14,13 +14,9 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // Security check: Only authenticated users can download PDFs
+        // Allow access for authenticated users OR direct CUID link access (from Telegram / customer proposals)
         const cookie = (await cookies()).get('session')?.value;
         const session = await decrypt(cookie);
-
-        if (!session?.userId) {
-            return new NextResponse('Unauthorized', { status: 401 });
-        }
 
         const { id } = await params;
 
