@@ -501,7 +501,8 @@ export type { SubmissionPDFProps };
 
 function formatCurrency(amount: number | null | undefined, currency: string = 'EUR') {
     if (amount === null || typeof amount === 'undefined') return 'N/A';
-    return new Intl.NumberFormat('es-ES', {
+    const locale = currency === 'COP' ? 'es-CO' : (currency === 'GTQ' ? 'es-GT' : 'es-ES');
+    return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
         maximumFractionDigits: currency === 'COP' ? 0 : 2,
@@ -608,6 +609,7 @@ const SubmissionPDF: React.FC<SubmissionPDFProps> = ({
     orthophotoBase64,
     id,
     createdAt,
+    country,
     images,
     svgIcons,
 }) => {
@@ -766,7 +768,9 @@ const SubmissionPDF: React.FC<SubmissionPDFProps> = ({
                         <Text style={styles.sectionTitle}>Detalles de la Instalación</Text>
                     </View>
                     <Text style={styles.description}>
-                        Estimación basada en datos de Google Solar API que analiza la irradiación solar, orientación del tejado y sombras para calcular el potencial de producción de energía.
+                        {country === 'colombia' || country === 'guatemala'
+                            ? 'Estimación basada en la base de datos de radiación satelital PVGIS (Comisión Europea) adaptada a tu ubicación geográfica y consumo.'
+                            : 'Estimación basada en datos de Google Solar API que analiza la irradiación solar, orientación del tejado y sombras para calcular el potencial de producción de energía.'}
                     </Text>
                     <View style={styles.detailsGrid}>
                         <View style={styles.detailBox}>
@@ -1109,7 +1113,7 @@ const SubmissionPDF: React.FC<SubmissionPDFProps> = ({
                             <View style={styles.parameterItem}>
                                 <Text style={styles.parameterLabel}>Precio electricidad:</Text>
                                 <Text style={styles.parameterValue}>
-                                    {currencyCode === 'COP' ? '986 COP/kWh' : '0,20 €/kWh'}
+                                    {currencyCode === 'COP' ? '986 COP/kWh' : (currencyCode === 'GTQ' ? '1,60 GTQ/kWh' : '0,20 €/kWh')}
                                 </Text>
                             </View>
                             <View style={styles.parameterItem}>
@@ -1128,7 +1132,7 @@ const SubmissionPDF: React.FC<SubmissionPDFProps> = ({
                                 <Text style={styles.parameterLabel}>Eficiencia DC/AC:</Text>
                                 <Text style={styles.parameterValue}>85%</Text>
                             </View>
-                            {currencyCode !== 'COP' && (
+                            {currencyCode !== 'COP' && currencyCode !== 'GTQ' && (
                                 <View style={styles.parameterItem}>
                                     <Text style={styles.parameterLabel}>Bonificación IRPF:</Text>
                                     <Text style={styles.parameterValue}>30%</Text>

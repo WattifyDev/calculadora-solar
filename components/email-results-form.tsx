@@ -112,13 +112,14 @@ export default function EmailResultsForm({ submissionId }: EmailResultsFormProps
         <Input id="phone" name="phone" placeholder="+57 123 456 7890" disabled={isPending || state.success} />
       </div>
 
-      <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+      <div className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-slate-50">
         <Checkbox id="consent" name="consent" required disabled={isPending || state.success} />
-        <div className="space-y-1 leading-none">
-          <Label htmlFor="consent">Acepto recibir información sobre soluciones solares</Label>
-          <p className="text-sm text-gray-500">
-            Al marcar esta casilla, aceptas permitirnos contactarte con información sobre instalaciones de paneles
-            solares y servicios relacionados.
+        <div className="space-y-1 leading-none text-left">
+          <Label htmlFor="consent" className="font-semibold text-slate-800">
+            Acepto la cesión y tratamiento de datos a Renovables del Henares S.L.
+          </Label>
+          <p className="text-xs text-gray-500 leading-relaxed mt-1">
+            Al marcar esta casilla, consientes expresamente la cesión y tratamiento de tus datos por parte de Renovables del Henares S.L. con la finalidad de gestionar tu estudio solar personalizado, remitirte la propuesta técnica oficial y contactarte para asesoramiento energético.
           </p>
         </div>
       </div>

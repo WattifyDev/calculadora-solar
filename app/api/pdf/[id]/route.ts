@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { renderToBuffer } from '@react-pdf/renderer';
 import SubmissionPDF from '@/components/SubmissionPDF';
-import SimplePDF from '@/components/SimplePDF';
 import React from 'react';
 import { decrypt } from '@/lib/session';
 import { cookies } from 'next/headers';
@@ -38,9 +37,11 @@ export async function GET(
             : (submission.costBreakdownJson as any || {});
 
         const priceKWUsed = submission.priceKWUsed || 1200;
-        const installationSizeKW = submission.baseInstallationCost && priceKWUsed
-            ? submission.baseInstallationCost / priceKWUsed
-            : (parsedGoogleSolarData.installationSizeKW || 0);
+        const installationSizeKW = submission.systemSize
+            ? submission.systemSize
+            : (submission.baseInstallationCost && priceKWUsed
+                ? submission.baseInstallationCost / priceKWUsed
+                : (parsedGoogleSolarData.installationSizeKW || 0));
 
         const precioFinal = installationSizeKW * priceKWUsed;
 
@@ -63,8 +64,8 @@ export async function GET(
             city: submission.city || 'No proporcionada',
             averageKwhConsumption: submission.averageKwhConsumption ?? null,
             monthlyElectricityBillAmount: submission.monthlyElectricityBillAmount ?? null,
-            panelCount: parsedGoogleSolarData?.panelsCount ?? null,
-            yearlyEnergyDcKwh: parsedGoogleSolarData?.yearlyEnergyDcKwh ?? null,
+            panelCount: submission.panelCount ?? parsedGoogleSolarData?.panelsCount ?? null,
+            yearlyEnergyDcKwh: submission.annualProduction ?? parsedGoogleSolarData?.yearlyEnergyDcKwh ?? null,
             installationSizeKW: installationSizeKW || null,
             priceKWUsed: priceKWUsed || null,
             precioFinal: precioFinal || null,
@@ -83,10 +84,10 @@ export async function GET(
             costBreakdown: costBreakdown,
             ivaAmount: submission.ivaAmount ?? null,
             totalCostWithIva: submission.totalCostWithIva ?? null,
-            totalCost: submission.totalCost ?? null,
-            firstYearSavings: submission.firstYearSavings ?? null,
-            lifetimeSavings: submission.lifetimeSavings ?? null,
-            paybackYears: submission.paybackYears ?? null,
+            totalCost: submission.totalCost ?? parsedGoogleSolarData?.estimatedInstallationCostAmount ?? null,
+            firstYearSavings: submission.firstYearSavings ?? parsedGoogleSolarData?.estimatedAnnualSavingsAmount ?? null,
+            lifetimeSavings: submission.lifetimeSavings ?? parsedGoogleSolarData?.estimatedTotalLifetimeSavingsAmount ?? null,
+            paybackYears: submission.paybackYears ?? parsedGoogleSolarData?.paybackYears ?? null,
             currencyCode: submission.currencyCode || 'EUR',
             constants,
             incentiveNote: incentiveDisclaimer,
@@ -159,80 +160,7 @@ export async function GET(
             }
         };
 
-        let pdfBuffer: Buffer;
-
-        if (submission.country === 'colombia') {
-            const formatCurrency = (amount: number | null | undefined) => {
-                if (amount === null || typeof amount === 'undefined') return 'N/A';
-                return new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP',
-                    maximumFractionDigits: 0,
-                }).format(amount);
-            };
-
-            const formatNumber = (num: number | null | undefined) => {
-                if (num === null || typeof num === 'undefined') return 'N/A';
-                return new Intl.NumberFormat('es-ES').format(num);
-            };
-
-            const getPaybackDisplay = (paybackYears: number | null | undefined, firstYearSavings: number | null | undefined, lifetimeSavings: number | null | undefined): string => {
-                if (
-                    paybackYears === null ||
-                    paybackYears === undefined ||
-                    paybackYears === 0 ||
-                    (typeof firstYearSavings === 'number' && firstYearSavings <= 0) ||
-                    (typeof lifetimeSavings === 'number' && lifetimeSavings <= 0)
-                ) {
-                    return 'No se amortiza';
-                }
-                return `${Math.round(paybackYears)} años`;
-            };
-
-            const simplePDFContent = `
-INFORMACIÓN DEL CLIENTE:
-Cliente: ${submission.userName || 'No proporcionado'}
-Email: ${submission.userEmail || 'No proporcionado'}
-Teléfono: ${submission.userPhone || 'No proporcionado'}
-Dirección: ${submission.address || 'No proporcionada'}
-Ciudad: ${submission.city || 'No proporcionada'}
-
-DETALLES DE LA INSTALACIÓN:
-Consumo mensual actual: ${submission.averageKwhConsumption || 'N/A'} kWh
-Producción anual estimada: ${formatNumber(parsedGoogleSolarData?.yearlyEnergyDcKwh || (submission as any).annualProduction)} kWh
-Potencia del sistema: ${formatNumber(installationSizeKW)} kWp
-Número de paneles recomendados: ${formatNumber(parsedGoogleSolarData?.panelsCount)}
-Panel seleccionado: ${submission.selectedPanelName || 'Panel de alta eficiencia'}
-Inversor seleccionado: ${submission.selectedInverterName || 'Inversor de calidad'} ${submission.selectedInverterPeakPower ? `(${submission.selectedInverterPeakPower} kW)` : ''}
-
-ANÁLISIS FINANCIERO:
-Costo total del sistema: ${formatCurrency(submission.totalCost || 0)}
-Ahorro estimado primer año: ${formatCurrency(submission.firstYearSavings || 0)}
-Ahorro total proyectado (25 años): ${formatCurrency(submission.lifetimeSavings || 0)}
-Periodo de recuperación: ${getPaybackDisplay(submission.paybackYears, submission.firstYearSavings, submission.lifetimeSavings)}
-
-DESGLOSE DETALLADO DE COSTOS:
-Costo de paneles solares: ${formatCurrency(costBreakdown?.costePanel)}
-Costo del inversor: ${formatCurrency(costBreakdown?.costeInversor)}
-Servicios de instalación: ${formatCurrency(costBreakdown?.serviciosInstalacionPuestaMarcha)}
-Trámites y legalización: ${formatCurrency(costBreakdown?.puestaMarchaLegalizacion)}
-Garantía y soporte técnico: ${formatCurrency(costBreakdown?.garantiaSoporteTecnico)}
-Estructura de montaje: ${formatCurrency(costBreakdown?.estructura)}
-
-RESUMEN FINANCIERO:
-Subtotal sin IVA: ${formatCurrency(submission.totalCost || 0)}
-IVA (19%): ${formatCurrency(submission.ivaAmount || 0)}
-TOTAL CON IVA: ${formatCurrency(submission.totalCostWithIva || 0)}
-            `.trim();
-
-            const simplePDFElement = React.createElement(SimplePDF, {
-                title: 'Informe de Potencial Solar - Colombia',
-                content: simplePDFContent
-            });
-            pdfBuffer = await renderToBuffer(simplePDFElement as any) as Buffer;
-        } else {
-            pdfBuffer = await renderToBuffer(React.createElement(SubmissionPDF, enhancedPdfProps as any) as any) as Buffer;
-        }
+        const pdfBuffer = await renderToBuffer(React.createElement(SubmissionPDF, enhancedPdfProps as any) as any) as Buffer;
 
         return new NextResponse(pdfBuffer as any, {
             headers: {

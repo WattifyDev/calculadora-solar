@@ -897,6 +897,17 @@
       margin-top: 4px !important;
     }
 
+    #${containerId} .solar-calc__lopd-box {
+      grid-column: 1 / -1 !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      border-radius: 10px !important;
+      padding: 12px 14px !important;
+      margin-top: 4px !important;
+    }
+
     #${containerId} .solar-calc__checkbox {
       width: 18px !important;
       height: 18px !important;
@@ -1320,8 +1331,27 @@
                     required
                   >
                   <label class="solar-calc__checkbox-label" for="consent-${containerId}" id="consentLabel-${containerId}">
-                    Consiento que Wattify guarde y use mis datos para gestionar mi estudio solar personalizado y enviarme la propuesta técnica sin compromiso.
+                    He leído y acepto la cesión y tratamiento de mis datos a <strong>Renovables del Henares S.L.</strong> con la finalidad de elaborar y remitirme mi estudio solar personalizado, generar la propuesta técnica oficial y contactarme para asesoramiento energético. Puedo revocar mi consentimiento y ejercer mis derechos de acceso, rectificación y supresión conforme a la normativa de protección de datos.
                   </label>
+                </div>
+
+                <!-- Cuadro informativo LOPD / RGPD (Segunda Capa Informativa) -->
+                <div class="solar-calc__lopd-box" style="font-size: 11.5px; color: #64748b; line-height: 1.5; text-align: left;">
+                  <div style="font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                    <span>🛡️</span> <span>Información Básica sobre Protección de Datos (RGPD / LOPDGDD):</span>
+                  </div>
+                  <div style="display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; margin-top: 4px;">
+                    <div style="font-weight: 600; color: #475569;">Responsable:</div>
+                    <div>Renovables del Henares S.L.</div>
+                    <div style="font-weight: 600; color: #475569;">Finalidad:</div>
+                    <div>Elaboración del estudio fotovoltaico, emisión de propuesta comercial y contacto de asesoramiento.</div>
+                    <div style="font-weight: 600; color: #475569;">Legitimación:</div>
+                    <div>Consentimiento expreso del interesado (Art. 6.1.a RGPD).</div>
+                    <div style="font-weight: 600; color: #475569;">Destinatarios:</div>
+                    <div>Renovables del Henares S.L. No se cederán a terceros salvo obligación legal o proveedores necesarios.</div>
+                    <div style="font-weight: 600; color: #475569;">Derechos:</div>
+                    <div>Acceder, rectificar y suprimir los datos, así como otros derechos conforme a la LOPD.</div>
+                  </div>
                 </div>
               </div>
 
@@ -2254,13 +2284,27 @@
 
         // Draw the user marked polygon roof outline subtly
         const userPoly = data.userPolygon;
+        let polyPts = null;
         let polyCenter = null;
         let polyMinX = Infinity, polyMaxX = -Infinity;
         let polyMinY = Infinity, polyMaxY = -Infinity;
 
+        // Point-in-polygon helper using ray casting algorithm on canvas coordinates
+        const isPointInPoly = (px, py, pts) => {
+          if (!pts || pts.length < 3) return true;
+          let inside = false;
+          for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+            const xi = pts[i].x, yi = pts[i].y;
+            const xj = pts[j].x, yj = pts[j].y;
+            const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+          }
+          return inside;
+        };
+
         if (Array.isArray(userPoly) && userPoly.length >= 3) {
           // Map user polygon vertices to exact canvas pixel coordinates using identical projection as panels
-          const polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
+          polyPts = userPoly.map(pt => toCanvasCoords(pt.lat, pt.lng));
 
           ctx.save();
           ctx.beginPath();
@@ -2379,6 +2423,13 @@
           const panelOrientations = data.roofSegments || [];
 
           physicalPanels.forEach(panel => {
+            const pCoords = toCanvasCoords(panel.center.latitude, panel.center.longitude);
+
+            // STRICT FILTER: If user marked a polygon, enforce that panel center must be strictly inside the polygon!
+            if (polyPts && !isPointInPoly(pCoords.x, pCoords.y, polyPts)) {
+              return; // Skip panel outside user polygon!
+            }
+
             const seg = panelOrientations.find(s => s.segmentIndex === panel.segmentIndex);
             let rot = 0;
             if (seg && seg.azimuthDegrees !== undefined) {
@@ -2387,7 +2438,6 @@
               rot = ((dominantSeg.azimuthDegrees - 180) * Math.PI) / 180;
             }
 
-            const pCoords = toCanvasCoords(panel.center.latitude, panel.center.longitude);
             const isLandscape = panel.orientation === 'LANDSCAPE';
             const w = isLandscape ? pHeightPx : pWidthPx;
             const h = isLandscape ? pWidthPx : pHeightPx;
@@ -2429,6 +2479,10 @@
               const finalX = anchorX + rotX;
               const finalY = anchorY + rotY;
 
+              if (polyPts && !isPointInPoly(finalX, finalY, polyPts)) {
+                continue;
+              }
+
               drawSinglePanel(finalX, finalY, roofAzimuthRad, pWidthPx, pHeightPx);
               drawn++;
             }
@@ -2459,6 +2513,7 @@
       segmentsContainer = document.createElement('div');
       segmentsContainer.id = `roofSegmentsContainer-${containerId}`;
       segmentsContainer.className = 'solar-calc__roof-segments';
+      segmentsContainer.style.cssText = 'margin: 24px 0 16px 0; text-align: left;';
       const summaryContent = shadow.getElementById(`summaryContent-${containerId}`);
       summaryContent.appendChild(segmentsContainer);
     }
@@ -2466,17 +2521,20 @@
     if (data.roofSegments && data.roofSegments.length > 0) {
       segmentsContainer.style.display = 'block';
       let segmentsHtml = `
-        <div class="solar-calc__roof-segments-title" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-          <span>🏠 Vertientes del Tejado (${data.roofSegments.length})</span>
-          <span style="font-size: 12px; font-weight: 600; color: #15803d; background: #dcfce7; padding: 3px 8px; border-radius: 6px;">Totalmente Combinables</span>
-        </div>
-        <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 12px; color: #475569; line-height: 1.5;">
-          <div style="display: flex; gap: 8px; align-items: flex-start;">
-            <span style="font-size: 16px; flex-shrink: 0;">💡</span>
-            <div>
-              <strong>¿Cómo funcionan las vertientes?</strong> Cada vertiente representa una caída o área física independiente de tu cubierta. <strong>Puedes marcar varias o todas a la vez</strong> sin que se superpongan. Te recomendamos priorizar las de <span style="color: #15803d; font-weight: 600;">Grado A (Sur/Sudoeste)</span> y <span style="color: #0284c7; font-weight: 600;">Grado B (Este/Sudeste)</span> para máxima rentabilidad.
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px; line-height: 1;">🏠</span>
+            <span style="font-weight: 800; color: #063231; font-size: 14px; text-transform: uppercase; letter-spacing: 0.03em;">
+              Vertientes de Cubierta (${data.roofSegments.length})
+            </span>
           </div>
+          <span style="background: #f8fafc; color: #15803d; border: 1px solid #bbf7d0; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+            ✓ Totalmente Combinables
+          </span>
+        </div>
+        <div style="font-size: 13px; color: #334155; line-height: 2; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 10px;">
+          <span style="font-size: 16px; line-height: 1.8;">💡</span>
+          <span><strong>¿Cómo funcionan las vertientes?</strong> Cada vertiente representa una caída o área física independiente de tu cubierta. Puedes seleccionar o desmarcar vertientes para ver la variación en paneles y ahorro en tiempo real.</span>
         </div>
       `;
 
@@ -2502,8 +2560,8 @@
         const segPanels = seg.panelsCount > 0 ? seg.panelsCount : Math.max(1, Math.floor(area / 2.2));
 
         return `
-          <div class="solar-calc__segment-card" style="margin-bottom: 8px; border-left: 4px solid ${seg.isChecked ? '#CBFF54' : '#cbd5e1'};">
-            <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="solar-calc__segment-card" style="margin-bottom: 10px; background: ${seg.isChecked ? '#ffffff' : '#f8fafc'}; border: 1.5px solid ${seg.isChecked ? '#86efac' : '#e2e8f0'}; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; box-shadow: ${seg.isChecked ? '0 2px 8px rgba(34, 197, 94, 0.08)' : 'none'};">
+            <div style="display: flex; align-items: center; gap: 12px;">
               <input 
                 type="checkbox" 
                 class="solar-calc__segment-checkbox-${containerId}" 
@@ -2512,16 +2570,16 @@
                 style="width: 18px !important; height: 18px !important; cursor: pointer !important; accent-color: #063231;"
               />
               <div style="text-align: left;">
-                <div style="font-weight: 700; font-size: 13px; color: #1e293b;">
+                <div style="font-weight: 700; font-size: 13px; color: #063231;">
                   Vertiente ${seg.originalIdx + 1}: ${orientationLabel} (${Math.round(seg.azimuthDegrees || 0)}°)
                 </div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                  ${pitch}° • <strong>${segPanels} paneles</strong> (${area} m²)
+                <div style="font-size: 11.5px; color: #64748b; margin-top: 3px;">
+                  ${pitch}° inclinación • <strong style="color: #063231;">${segPanels} paneles</strong> (${area} m²)
                 </div>
               </div>
             </div>
             <div>
-              <span class="solar-calc__segment-badge grade-${badgeGrade}" style="font-size: 11px; padding: 2px 6px;">Grado ${badgeGrade}</span>
+              <span class="solar-calc__segment-badge grade-${badgeGrade}" style="font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">Grado ${badgeGrade}</span>
             </div>
           </div>
         `;
@@ -2530,8 +2588,8 @@
       segmentsHtml += `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px;">
           <!-- Columna Izquierda: Vertientes Prioritarias Recomendadas -->
-          <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 12px 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <div style="background: #ffffff; border: 1.5px solid #bbf7d0; border-radius: 14px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
               <span style="font-size: 13px; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 6px;">
                 <span>🎯</span> Vertientes Prioritarias (${prioritizedSegments.length})
               </span>
@@ -2545,8 +2603,8 @@
           </div>
 
           <!-- Columna Derecha: Vertientes de Ampliación Disponibles -->
-          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+          <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 14px 16px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
               <span style="font-size: 13px; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px;">
                 <span>➕</span> Vertientes de Ampliación (${expansionSegments.length})
               </span>
@@ -2656,7 +2714,7 @@
     if (!batteryInfo) {
       batteryInfo = document.createElement('div');
       batteryInfo.id = `summaryBatteryInfo-${containerId}`;
-      batteryInfo.style.cssText = 'background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 10px 14px; margin: 12px 0; display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #166534; font-weight: 500;';
+      batteryInfo.style.cssText = 'margin: 16px 0;';
       const summaryContent = shadow.getElementById(`summaryContent-${containerId}`);
       const summaryGrid = shadow.querySelector(`#summaryContent-${containerId} .solar-calc__summary-grid`);
       if (summaryGrid && summaryGrid.parentNode) {
@@ -2665,18 +2723,59 @@
     }
 
     if (data.hasBattery || (data.costBreakdown && data.costBreakdown.bateria > 0)) {
-      batteryInfo.style.display = 'flex';
+      batteryInfo.style.display = 'block';
       const bCost = (data.costBreakdown && data.costBreakdown.bateria) ? data.costBreakdown.bateria : (data.batteryCost || 0);
-      const bDesc = data.batteryTypeDescription || (data.batteryCapacityKWh ? `${data.batteryCapacityKWh} kWh de capacidad` : 'Almacenamiento Inteligente');
+      const bCapacity = data.batteryCapacityKWh || (data.unitCount ? data.unitCount * 5 : 5);
+      const bDesc = data.batteryTypeDescription || `${bCapacity} kWh de capacidad`;
+      const dailyStorage = (bCapacity * 0.9).toFixed(1);
+      const bCostFormatted = bCost > 0 ? '+ ' + formatCurrency(bCost, currency) : 'Incluida';
+
       batteryInfo.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 18px;">🔋</span>
-          <div>
-            <strong style="color: #14532d;">Batería Incluida:</strong> ${bDesc}
+        <div style="margin: 16px 0; text-align: left;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 22px; line-height: 1;">🔋</span>
+              <div>
+                <div style="font-weight: 800; color: #063231; font-size: 14px; text-transform: uppercase; letter-spacing: 0.03em;">
+                  Sistema de Almacenamiento Inteligente (Batería Litio)
+                </div>
+                <div style="font-size: 13px; color: #475569; font-weight: 600; line-height: 2; margin-top: 2px;">
+                  ${bDesc}
+                </div>
+              </div>
+            </div>
+            <span style="background: #f8fafc; color: #334155; border: 1px solid #e2e8f0; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+              ⚡ LiFePO4 • +6.000 Ciclos
+            </span>
           </div>
-        </div>
-        <div style="font-weight: 700; color: #15803d;">
-          ${bCost > 0 ? '+ ' + formatCurrency(bCost, currency) : 'Incluida'}
+
+          <div class="solar-calc__summary-grid" style="margin-bottom: 10px;">
+            <div class="solar-calc__summary-item">
+              <div class="solar-calc__summary-label">Capacidad Útil</div>
+              <div class="solar-calc__summary-value" style="font-size: 18px !important;">${bCapacity} kWh</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Modular de Litio</div>
+            </div>
+            <div class="solar-calc__summary-item">
+              <div class="solar-calc__summary-label">Independencia</div>
+              <div class="solar-calc__summary-value" style="color: #16a34a !important; font-size: 18px !important;">95%</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Autoconsumo día/noche</div>
+            </div>
+            <div class="solar-calc__summary-item">
+              <div class="solar-calc__summary-label">Autonomía Noche</div>
+              <div class="solar-calc__summary-value" style="font-size: 18px !important;">~${dailyStorage} kWh</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Excedente acumulado/día</div>
+            </div>
+            <div class="solar-calc__summary-item">
+              <div class="solar-calc__summary-label">Inversión Batería</div>
+              <div class="solar-calc__summary-value" style="color: #063231 !important; font-size: 18px !important;">${bCostFormatted}</div>
+              <div style="font-size: 11px; color: #64748b; margin-top: 4px;">En presupuesto total</div>
+            </div>
+          </div>
+
+          <div style="font-size: 13px; color: #334155; line-height: 2; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: flex-start; gap: 10px; margin-top: 8px;">
+            <span style="font-size: 16px; line-height: 1.8;">💡</span>
+            <span><strong>Máximo valor fotovoltaico (PVGIS):</strong> Retén tus excedentes solares para abastecer tu consumo durante la noche y protegerte ante cortes en el suministro eléctrico o variaciones de tarifa.</span>
+          </div>
         </div>
       `;
     } else {
@@ -2689,7 +2788,7 @@
     if (!incentivesInfo) {
       incentivesInfo = document.createElement('div');
       incentivesInfo.id = `summaryIncentivesInfo-${containerId}`;
-      incentivesInfo.style.cssText = 'background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin: 14px 0; font-size: 13px; color: #1e3a8a; line-height: 1.5; text-align: left;';
+      incentivesInfo.style.cssText = 'margin: 24px 0 16px 0; text-align: left;';
       const summaryContent = shadow.getElementById(`summaryContent-${containerId}`);
       summaryContent.appendChild(incentivesInfo);
     }
@@ -2701,19 +2800,39 @@
 
       incentivesInfo.style.display = 'block';
       incentivesInfo.innerHTML = `
-        <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
-          <span style="font-size: 20px; line-height: 1;">🏛️</span>
-          <div>
-            <div style="font-weight: 700; color: #1e40af; font-size: 14px;">
-              Ayudas y Subvenciones Estimadas: -${formatCurrency(incAmount, currency)}
-            </div>
-            <div style="color: #3b82f6; font-size: 12px; font-weight: 600; margin-top: 2px;">
-              Coste final con deducción fiscal (IRPF): <strong>${formatCurrency(netCost, currency)}</strong> • Retorno estimado: <strong style="color: #15803d; font-size: 13px;">${payback}</strong>
-            </div>
+        <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 20px; line-height: 1;">🏛️</span>
+            <span style="font-weight: 800; color: #063231; font-size: 14px; text-transform: uppercase; letter-spacing: 0.03em;">
+              Ayudas Fiscales y Retorno de Inversión (IRPF)
+            </span>
+          </div>
+          <span style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+            Deducción hasta 40% - 60%
+          </span>
+        </div>
+
+        <div class="solar-calc__summary-grid" style="grid-template-columns: repeat(3, 1fr) !important; margin-bottom: 10px;">
+          <div class="solar-calc__summary-item">
+            <div class="solar-calc__summary-label" style="color: #1e40af !important;">Deducción IRPF</div>
+            <div class="solar-calc__summary-value" style="color: #1e40af !important; font-size: 18px !important;">-${formatCurrency(incAmount, currency)}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Ahorro fiscal directo</div>
+          </div>
+          <div class="solar-calc__summary-item">
+            <div class="solar-calc__summary-label">Coste Neto Subvencionado</div>
+            <div class="solar-calc__summary-value" style="color: #063231 !important; font-size: 18px !important;">${formatCurrency(netCost, currency)}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Tras desgravar IRPF</div>
+          </div>
+          <div class="solar-calc__summary-item">
+            <div class="solar-calc__summary-label" style="color: #15803d !important;">Amortización</div>
+            <div class="solar-calc__summary-value" style="color: #15803d !important; font-size: 18px !important;">${payback}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">Retorno estimado</div>
           </div>
         </div>
-        <div style="font-size: 11.5px; color: #475569; background: #ffffff; padding: 8px 12px; border-radius: 8px; border: 1px solid #dbeafe; margin-top: 6px;">
-          <strong>ℹ️ Bonificación del IBI:</strong> Esta bonificación depende de cada Municipio. Wattify consultará la disponibilidad exacta durante la tramitación administrativa de los permisos oficiales, una vez aceptado el proyecto.
+
+        <div style="font-size: 13px; color: #334155; line-height: 2; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; align-items: flex-start; gap: 10px; margin-top: 8px;">
+          <span style="font-size: 16px; line-height: 1.8;">ℹ️</span>
+          <span><strong>Bonificación del IBI:</strong> Esta bonificación municipal depende de cada ayuntamiento. Wattify tramitará y consultará la disponibilidad oficial de tu municipio una vez aceptado el proyecto.</span>
         </div>
       `;
     } else {
@@ -2728,6 +2847,7 @@
       priceInfo.className = 'solar-calc__summary-average-price';
       shadow.getElementById(`summaryContent-${containerId}`).appendChild(priceInfo);
     }
+    priceInfo.style.cssText = 'margin: 20px auto 12px auto !important; display: inline-flex !important; font-size: 12.5px !important;';
     const currSymbol = averagePriceCurrency === 'COP' ? '$' : (averagePriceCurrency === 'GTQ' ? 'Q ' : '€');
     priceInfo.textContent = `Tarifa media de electricidad utilizada: ${currSymbol}${averagePrice} / kWh`;
   }
@@ -2926,8 +3046,12 @@
 
     // Update consent text based on detected country
     const consentLabel = shadow.getElementById(`consentLabel-${containerId}`);
-    if (consentLabel && detectedCountry === 'Colombia') {
-      consentLabel.textContent = 'Consiento que Wattify Colombia SAS guarde y use mis datos para gestionar mi solicitud de información sobre instalaciones solares, así como para el envío de comunicaciones relacionadas con sus servicios.';
+    if (consentLabel) {
+      if (detectedCountry === 'Colombia') {
+        consentLabel.innerHTML = 'Consiento que Wattify Colombia SAS guarde y use mis datos para gestionar mi solicitud de información sobre instalaciones solares, así como para el envío de comunicaciones relacionadas con sus servicios.';
+      } else {
+        consentLabel.innerHTML = 'He leído y acepto la cesión y tratamiento de mis datos a <strong>Renovables del Henares S.L.</strong> con la finalidad de elaborar y remitirme mi estudio solar personalizado, generar la propuesta técnica oficial y contactarme para asesoramiento energético. Puedo revocar mi consentimiento y ejercer mis derechos de acceso, rectificación y supresión conforme a la normativa de protección de datos.';
+      }
     }
   } else {
     console.log('[EMBED] No detected country, keeping default currency (EUR)');
@@ -2958,7 +3082,7 @@
           contactForm.appendChild(consentAlert);
         }
       }
-      consentAlert.innerHTML = '<span>⚠️</span> <span>Es necesario que nos autorices al tratamiento de tus datos para poder procesar tu solicitud, no los compartiremos con nadie.</span>';
+      consentAlert.innerHTML = '<span>⚠️</span> <span>Es necesario aceptar la cesión y tratamiento de datos por parte de Renovables del Henares S.L. para generar y enviarte tu propuesta oficial.</span>';
       consentAlert.style.display = 'flex';
       if (consentCheckbox) {
         consentCheckbox.focus();
@@ -3052,7 +3176,7 @@
       contactForm.reset();
       form.reset();
 
-      const senderEmail = result.senderEmail || 'info@wattify.es';
+      const senderEmail = result.senderEmail || 'Informe Solar';
       const customerName = data.name || '';
 
       setTimeout(() => {
@@ -3063,7 +3187,7 @@
 
         if (modalConfirmBox && modalConfirmMsg) {
           modalConfirmMsg.innerHTML = `
-            En breve recibirás el informe detallado en formato PDF remitido desde <strong>${senderEmail}</strong>.<br><br>
+            En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br><br>
             <em>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</em>
           `;
           modalConfirmBox.style.display = 'block';

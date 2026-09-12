@@ -175,15 +175,6 @@ export function extractRoofSegments(
         return [];
     }
 
-    const panelsBySegment = new Map<number, number>();
-    if (solarPotential.solarPanels && Array.isArray(solarPotential.solarPanels)) {
-        for (const panel of solarPotential.solarPanels) {
-            if (typeof panel.segmentIndex === 'number') {
-                panelsBySegment.set(panel.segmentIndex, (panelsBySegment.get(panel.segmentIndex) || 0) + 1);
-            }
-        }
-    }
-
     // Helper: Ray casting algorithm to check if a lat/lng point is inside a polygon
     function isPointInPolygon(point: { latitude: number; longitude: number }, vs: { lat: number; lng: number }[]) {
         const x = point.longitude, y = point.latitude;
@@ -197,15 +188,38 @@ export function extractRoofSegments(
         return inside;
     }
 
+    const hasUserPoly = Boolean(userPolygon && Array.isArray(userPolygon) && userPolygon.length >= 3);
+    const panelsBySegment = new Map<number, number>();
+    if (solarPotential.solarPanels && Array.isArray(solarPotential.solarPanels)) {
+        for (const panel of solarPotential.solarPanels) {
+            if (typeof panel.segmentIndex === 'number') {
+                if (hasUserPoly && panel.center) {
+                    if (!isPointInPolygon(panel.center, userPolygon!)) {
+                        continue; // Skip panel outside user polygon
+                    }
+                }
+                panelsBySegment.set(panel.segmentIndex, (panelsBySegment.get(panel.segmentIndex) || 0) + 1);
+            }
+        }
+    }
+
     // First map all raw segments
     const allRawSegments = solarPotential.roofSegmentStats.map((stat, index) => {
         const pitch = Math.round(stat.pitchDegrees);
         const azimuth = Math.round(stat.azimuthDegrees);
         const orientationLabel = getOrientationLabel(azimuth);
         const perf = getPerformanceRating(azimuth, pitch);
-        const areaMeters2 = Math.round(stat.stats?.areaMeters2 || 0);
+        let areaMeters2 = Math.round(stat.stats?.areaMeters2 || 0);
         const sunshineHoursPerYear = Math.round(stat.stats?.sunshineQuantiles?.[5] || solarPotential.maxSunshineHoursPerYear || 1400);
-        const panelsCount = panelsBySegment.get(index) || (areaMeters2 > 0 ? Math.max(1, Math.floor(areaMeters2 / 2.2)) : 0);
+        
+        let panelsCount = panelsBySegment.get(index) || 0;
+        if (hasUserPoly) {
+            if (panelsCount > 0) {
+                areaMeters2 = Math.round(panelsCount * 2.2);
+            }
+        } else if (panelsCount === 0 && areaMeters2 > 0) {
+            panelsCount = Math.max(1, Math.floor(areaMeters2 / 2.2));
+        }
 
         return {
             segmentIndex: index,
@@ -226,31 +240,30 @@ export function extractRoofSegments(
     });
 
     // FILTER OUT SEGMENTS OUTSIDE USER-DRAWN ROOF POLYGON:
-    // If the user specified a polygon, discard any segment whose center falls outside the polygon bounds
+    // If the user specified a polygon, keep segments that have panels inside or whose center falls inside
     let candidates = allRawSegments;
-    if (userPolygon && Array.isArray(userPolygon) && userPolygon.length >= 3) {
+    if (hasUserPoly) {
         const polygonFiltered = candidates.filter(s => {
-            if (s.center) {
-                return isPointInPolygon(s.center, userPolygon);
-            }
-            return true;
+            if (s.panelsCount > 0) return true;
+            if (s.center) return isPointInPolygon(s.center, userPolygon!);
+            return false;
         });
-        // If polygon matching found at least one segment, use strictly those
         if (polygonFiltered.length > 0) {
             candidates = polygonFiltered;
         }
     }
 
     // FILTER OUT RESIDUAL MICRO-SEGMENTS:
-    // Discard chimney caps, micro-eaves, and tiny surfaces (area < 20m² or panels < 6)
-    // to present clean, realistic primary roof slopes to the user.
-    let validSegments = candidates.filter(s => s.areaMeters2 >= 20 && s.panelsCount >= 6);
-    if (validSegments.length === 0) {
-        // Fallback if the building is very small: keep segments with at least 10m² and 4 panels
-        validSegments = candidates.filter(s => s.areaMeters2 >= 10 && s.panelsCount >= 4);
-    }
+    // If user polygon is active, keep any viable segment with at least 2 panels; otherwise filter out <20m²/<6 panels
+    let validSegments = hasUserPoly 
+        ? candidates.filter(s => s.panelsCount >= 2 || s.areaMeters2 >= 5)
+        : candidates.filter(s => s.areaMeters2 >= 20 && s.panelsCount >= 6);
+
     if (validSegments.length === 0) {
         validSegments = candidates.filter(s => s.panelsCount > 0);
+    }
+    if (validSegments.length === 0) {
+        validSegments = candidates;
     }
 
     const allSegments = validSegments;

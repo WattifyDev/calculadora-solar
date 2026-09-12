@@ -3,7 +3,6 @@ import type { User } from '@/generated/prisma';
 import type { Submission } from '@/generated/prisma';
 import { renderToBuffer } from '@react-pdf/renderer';
 import SubmissionPDF, { SubmissionPDFProps } from '@/components/SubmissionPDF';
-import SimplePDF from '@/components/SimplePDF';
 import React from 'react';
 import { prisma } from '@/lib/db';
 import type { Material } from '@/generated/prisma';
@@ -246,9 +245,9 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
         // Installation details
         averageKwhConsumption: submission.averageKwhConsumption ?? null,
         monthlyElectricityBillAmount: submission.monthlyElectricityBillAmount ?? null,
-        panelCount: parsedGoogleSolarData?.panelsCount ?? null,
-        yearlyEnergyDcKwh: parsedGoogleSolarData?.yearlyEnergyDcKwh ?? null,
-        installationSizeKW: installationSizeKW ?? null,
+        panelCount: submission.panelCount ?? parsedGoogleSolarData?.panelsCount ?? null,
+        yearlyEnergyDcKwh: submission.annualProduction ?? parsedGoogleSolarData?.yearlyEnergyDcKwh ?? null,
+        installationSizeKW: submission.systemSize ?? installationSizeKW ?? null,
         priceKWUsed: priceKWUsed ?? null,
         precioFinal: precioFinal ?? null,
         selectedPanelName: selectedPanelName ?? 'N/A',
@@ -268,10 +267,10 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
         ivaAmount: ivaAmount ?? null,
         totalCostWithIva: totalCostWithIva ?? null,
         // Financial analysis
-        totalCost: submission.totalCost ?? null,
-        firstYearSavings: submission.firstYearSavings ?? null,
-        lifetimeSavings: submission.lifetimeSavings ?? null,
-        paybackYears: submission.paybackYears ?? null,
+        totalCost: submission.totalCost ?? parsedGoogleSolarData?.estimatedInstallationCostAmount ?? null,
+        firstYearSavings: submission.firstYearSavings ?? parsedGoogleSolarData?.estimatedAnnualSavingsAmount ?? null,
+        lifetimeSavings: submission.lifetimeSavings ?? parsedGoogleSolarData?.estimatedTotalLifetimeSavingsAmount ?? null,
+        paybackYears: submission.paybackYears ?? parsedGoogleSolarData?.paybackYears ?? null,
         currencyCode: submission.currencyCode || 'EUR',
         // Constants
         constants,
@@ -358,68 +357,8 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
 
     let pdfBuffer: Buffer;
     try {
-        // Use SimplePDF for Colombia, styled SubmissionPDF for other countries
-        if (submission.country === 'colombia') {
-            const formatCurrency = (amount: number | null | undefined) => {
-                if (amount === null || typeof amount === 'undefined') return 'N/A';
-                return new Intl.NumberFormat('es-CO', {
-                    style: 'currency',
-                    currency: 'COP',
-                    maximumFractionDigits: 0,
-                }).format(amount);
-            };
-
-            const formatNumber = (num: number | null | undefined) => {
-                if (num === null || typeof num === 'undefined') return 'N/A';
-                return new Intl.NumberFormat('es-ES').format(num);
-            };
-
-            const simplePDFContent = `
-INFORMACIÓN DEL CLIENTE:
-Cliente: ${submission.userName || 'No proporcionado'}
-Email: ${submission.userEmail || 'No proporcionado'}
-Teléfono: ${submission.userPhone || 'No proporcionado'}
-Dirección: ${submission.address || 'No proporcionada'}
-Ciudad: ${submission.city || 'No proporcionada'}
-
-DETALLES DE LA INSTALACIÓN:
-Consumo mensual actual: ${submission.averageKwhConsumption || 'N/A'} kWh
-Producción anual estimada: ${formatNumber(parsedGoogleSolarData?.yearlyEnergyDcKwh || submission.annualProduction)} kWh
-Potencia del sistema: ${formatNumber(installationSizeKW)} kWp
-Número de paneles recomendados: ${formatNumber(parsedGoogleSolarData?.panelsCount)}
-Panel seleccionado: ${selectedPanelName || 'Panel de alta eficiencia'}
-Inversor seleccionado: ${selectedInverterName || 'Inversor de calidad'} ${selectedInverterPeakPower ? `(${selectedInverterPeakPower} kW)` : ''}
-
-ANÁLISIS FINANCIERO:
-Costo total del sistema: ${formatCurrency(submission.totalCost)}
-Ahorro estimado primer año: ${formatCurrency(submission.firstYearSavings)}
-Ahorro total proyectado (25 años): ${formatCurrency(submission.lifetimeSavings)}
-Periodo de recuperación: ${getPaybackDisplay(submission.paybackYears, submission.firstYearSavings, submission.lifetimeSavings)}
-
-DESGLOSE DETALLADO DE COSTOS:
-Costo de paneles solares: ${formatCurrency(costBreakdown?.costePanel)}
-Costo del inversor: ${formatCurrency(costBreakdown?.costeInversor)}
-Servicios de instalación: ${formatCurrency(costBreakdown?.serviciosInstalacionPuestaMarcha)}
-Trámites y legalización: ${formatCurrency(costBreakdown?.puestaMarchaLegalizacion)}
-Garantía y soporte técnico: ${formatCurrency(costBreakdown?.garantiaSoporteTecnico)}
-Estructura de montaje: ${formatCurrency(costBreakdown?.estructura)}
-
-RESUMEN FINANCIERO:
-Subtotal sin IVA: ${formatCurrency(submission.totalCost)}
-IVA (19%): ${formatCurrency(ivaAmount)}
-TOTAL CON IVA: ${formatCurrency(totalCostWithIva)}
-
-            `.trim();
-
-            const simplePDFElement = React.createElement(SimplePDF, {
-                title: 'Informe de Potencial Solar - Colombia',
-                content: simplePDFContent
-            });
-            pdfBuffer = await renderToBuffer(simplePDFElement as any);
-        } else {
-            // Use styled PDF for Spain and other countries with absolute image URLs
-            pdfBuffer = await renderToBuffer(React.createElement(SubmissionPDF, enhancedPdfProps) as any);
-        }
+        // Unified styled SubmissionPDF for all countries (Spain, Colombia, Guatemala)
+        pdfBuffer = await renderToBuffer(React.createElement(SubmissionPDF, enhancedPdfProps) as any);
     } catch (pdfError: any) {
         console.error('Error generating PDF:', pdfError);
         if (pdfError.stack) {
@@ -893,8 +832,9 @@ TOTAL CON IVA: ${formatCurrency(totalCostWithIva)}
 </body>
 </html>`;
 
+    const formattedFrom = config.from.includes('<') ? config.from : `"Informe Solar" <${config.from}>`;
     const mailOptions = {
-        from: config.from,
+        from: formattedFrom,
         to: submission.userEmail || '',
         subject: 'Tu Informe de Potencial Solar',
         html: emailContent, // Use html instead of text

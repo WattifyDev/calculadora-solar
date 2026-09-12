@@ -1119,18 +1119,22 @@ export async function POST(request: Request) {
                 if (!analysis && solarPotential.solarPanelConfigs && solarPotential.solarPanelConfigs.length > 0 && solarPotential.panelCapacityWatts) {
                     let bestAnalysis: DetailedFinancialAnalysis | null = null;
                     
-                    // If user filtered roof segments, calculate the ratio of panels allowed on selected segments
+                    // If user filtered roof segments or drew a polygon, calculate the ratio of panels allowed on selected segments
                     let segmentPanelCap = Infinity;
                     let segmentEnergyFactor = 1.0;
-                    if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
+                    const activeSegmentsList = roofSegments.filter(s => {
+                        if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
+                            return selectedSegmentIndices.includes(s.segmentIndex);
+                        }
+                        return s.isSelected;
+                    });
+                    const activeSegmentIndices = new Set(activeSegmentsList.map(s => s.segmentIndex));
+                    if (activeSegmentsList.length > 0) {
+                        const selectedRoofPanels = activeSegmentsList.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
                         const totalRoofPanels = roofSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
-                        const selectedRoofPanels = roofSegments
-                            .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
-                            .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
-                        
-                        if (totalRoofPanels > 0) {
+                        if (selectedRoofPanels > 0) {
                             segmentPanelCap = selectedRoofPanels;
-                            segmentEnergyFactor = selectedRoofPanels / totalRoofPanels;
+                            segmentEnergyFactor = totalRoofPanels > 0 ? selectedRoofPanels / totalRoofPanels : 1.0;
                         }
                     }
 
@@ -1143,8 +1147,8 @@ export async function POST(request: Request) {
                         
                         if (segmentPanelCap < Infinity) {
                             // If this config exceeds the selected roof capacity, cap it or check roofSegmentSummaries
-                            if (config.roofSegmentSummaries && config.roofSegmentSummaries.length > 0) {
-                                const selectedSummaries = config.roofSegmentSummaries.filter(rss => selectedSegmentIndices!.includes(rss.segmentIndex));
+                            if (config.roofSegmentSummaries && config.roofSegmentSummaries.length > 0 && activeSegmentIndices.size > 0) {
+                                const selectedSummaries = config.roofSegmentSummaries.filter(rss => activeSegmentIndices.has(rss.segmentIndex));
                                 effectivePanelsCount = selectedSummaries.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
                                 effectiveYearlyEnergyDcKwh = selectedSummaries.reduce((sum, s) => sum + (s.yearlyEnergyDcKwh || 0), 0);
                             } else {
@@ -1235,13 +1239,21 @@ export async function POST(request: Request) {
                     if (solarPotential.maxArrayPanelsCount && solarPotential.maxArrayPanelsCount > 0) {
                         targetPanels = Math.min(targetPanels, solarPotential.maxArrayPanelsCount);
                     }
-                    // If user selected specific vertientes, install the full potential of those vertientes
-                    if (selectedSegmentIndices && selectedSegmentIndices.length > 0 && roofSegments.length > 0) {
-                        const selectedCap = roofSegments
-                            .filter(s => selectedSegmentIndices!.includes(s.segmentIndex))
-                            .reduce((sum, s) => sum + (s.panelsCount || 0), 0);
+                    // If user selected specific vertientes or delimited polygon, cap to that capacity
+                    if (roofSegments.length > 0) {
+                        const activeSegments = roofSegments.filter(s => {
+                            if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
+                                return selectedSegmentIndices.includes(s.segmentIndex);
+                            }
+                            return s.isSelected;
+                        });
+                        const selectedCap = activeSegments.reduce((sum, s) => sum + (s.panelsCount || 0), 0);
                         if (selectedCap > 0) {
-                            targetPanels = selectedCap;
+                            if (selectedSegmentIndices && selectedSegmentIndices.length > 0) {
+                                targetPanels = selectedCap;
+                            } else {
+                                targetPanels = Math.min(targetPanels, selectedCap);
+                            }
                         }
                     }
 
@@ -1298,21 +1310,57 @@ export async function POST(request: Request) {
                     googleSolarData.estimatedTotalLifetimeSavingsAmount = (analysis.totalLifetimeSavings ?? null) as number | null;
                     googleSolarData.paybackYears = (analysis.paybackYears ?? null) as number | null;
 
-                    // CONJUGATION OF CONSUMPTION & PHYSICAL SPACE:
-                    // Filter raw solar panels to only those belonging to the active/selected roof segments,
-                    // sorted by production efficiency descending, and capped strictly at analysis.panelsCount.
+                    // Helper point-in-polygon function for panel GPS coordinates
+                    const isCoordInPoly = (lat: number, lng: number, vs: { lat: number; lng: number }[]) => {
+                        let inside = false;
+                        for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                            const xi = vs[i].lng, yi = vs[i].lat;
+                            const xj = vs[j].lng, yj = vs[j].lat;
+                            const intersect = ((yi > lat) !== (yj > lat)) && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+                            if (intersect) inside = !inside;
+                        }
+                        return inside;
+                    };
+
+                    const hasPoly = Boolean(parsedUserPolygon && Array.isArray(parsedUserPolygon) && parsedUserPolygon.length >= 3);
                     const activeSegmentIndices = new Set(roofSegments.filter(s => s.isSelected).map(s => s.segmentIndex));
                     const rawPanels = solarPotential.solarPanels || [];
-                    const viablePanels = rawPanels
-                        .filter(p => typeof p.segmentIndex === 'number' && activeSegmentIndices.has(p.segmentIndex))
-                        .sort((a, b) => (b.yearlyEnergyDcKwh || 0) - (a.yearlyEnergyDcKwh || 0));
+                    
+                    let viablePanels = rawPanels.filter(p => {
+                        if (typeof p.segmentIndex !== 'number' || !activeSegmentIndices.has(p.segmentIndex)) {
+                            return false;
+                        }
+                        if (hasPoly && p.center && typeof p.center.latitude === 'number' && typeof p.center.longitude === 'number') {
+                            return isCoordInPoly(p.center.latitude, p.center.longitude, parsedUserPolygon);
+                        }
+                        return true;
+                    });
 
-                    const optimalPanelsCount = analysis.panelsCount ?? 18;
-                    // Pick the best panels physically located on the selected roof slopes
+                    viablePanels.sort((a, b) => (b.yearlyEnergyDcKwh || 0) - (a.yearlyEnergyDcKwh || 0));
+
+                    // If viablePanels inside polygon is limited, cap panelsCount to what physically fits in user's marked area!
+                    let optimalPanelsCount = analysis.panelsCount ?? 18;
+                    if (viablePanels.length > 0 && optimalPanelsCount > viablePanels.length) {
+                        console.log(`[CALC] Capping panelsCount from ${optimalPanelsCount} to ${viablePanels.length} (space physically available in user polygon)`);
+                        optimalPanelsCount = viablePanels.length;
+                        analysis.panelsCount = optimalPanelsCount;
+                        analysis.installationSizeKW = calculateInstallationSizeKW(optimalPanelsCount, solarPotential.panelCapacityWatts);
+                        analysis.installationCost = Math.round(analysis.installationSizeKW * effectivePriceKW);
+                        googleSolarData.panelsCount = optimalPanelsCount;
+                        googleSolarData.estimatedInstallationCostAmount = analysis.installationCost;
+                        
+                        const actualDcProduction = viablePanels.slice(0, optimalPanelsCount).reduce((sum, p) => sum + (p.yearlyEnergyDcKwh || 0), 0);
+                        if (actualDcProduction > 0) {
+                            analysis.yearlyEnergyDcKwh = actualDcProduction;
+                            googleSolarData.yearlyEnergyDcKwh = actualDcProduction;
+                        }
+                    }
+
+                    // Pick the best panels physically located on the selected roof slopes strictly inside the polygon
                     const selectedOptimalPanels = viablePanels.slice(0, optimalPanelsCount);
-                    googleSolarData.solarPanels = selectedOptimalPanels.length > 0 ? selectedOptimalPanels : rawPanels.slice(0, optimalPanelsCount);
+                    googleSolarData.solarPanels = selectedOptimalPanels.length > 0 ? selectedOptimalPanels : viablePanels;
 
-                    console.log(`[CALC] Conjugated panels: ${googleSolarData.solarPanels.length} physical panels selected from ${viablePanels.length} viable candidates across ${activeSegmentIndices.size} active segments`);
+                    console.log(`[CALC] Conjugated panels: ${googleSolarData.solarPanels.length} physical panels selected from ${viablePanels.length} viable polygon candidates across ${activeSegmentIndices.size} active segments`);
 
                     console.log(`[CALC] Final financials (source: ${usedSource}):`, {
                         estimatedInstallationCostAmount: googleSolarData.estimatedInstallationCostAmount,
