@@ -73,6 +73,24 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     createdAt,
   } = results;
 
+  const calBaseUrl = 'https://cal.com/wattify/estudio-residencial';
+  const notes = [
+    address ? `Ubicación: ${address}, ${city || ''}` : '',
+    installationSizeKW ? `Potencia: ${installationSizeKW} kWp (${panelCount || ''} paneles)` : '',
+    firstYearSavings ? `Ahorro estimado: ${firstYearSavings} ${currencyCode}/año` : '',
+    submissionId ? `Expediente: ${submissionId}` : ''
+  ].filter(Boolean).join(' | ');
+
+  const calParams = new URLSearchParams();
+  if (userName) calParams.set('name', userName);
+  if (userEmail) calParams.set('email', userEmail);
+  if (userPhone) calParams.set('phone', userPhone);
+  if (notes) calParams.set('notes', notes);
+  if (submissionId) calParams.set('leadId', submissionId);
+  if (address) calParams.set('location', address);
+
+  const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-2 sm:px-0">
       <div className="container mx-auto max-w-5xl space-y-8">
@@ -86,6 +104,38 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             </p>
           </div>
         </header>
+
+        {/* Cal.com Booking CTA with Data Passing */}
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-6 sm:p-8 shadow-2xl border border-emerald-500/30 text-white">
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-2 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#CBFF54] text-[#063231] text-xs font-black tracking-wider uppercase">
+                <span>⚡</span> Paso Siguiente Recomendado
+              </div>
+              <h3 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                ¿Revisamos tu estudio con un ingeniero especialista?
+              </h3>
+              <p className="text-slate-300 text-sm max-w-xl leading-relaxed">
+                Agenda una sesión técnica online de 15 minutos. Validaremos la orientación de tu cubierta, optimizaremos el dimensionado y te asesoraremos sobre la deducción fiscal del IRPF y bonificación del IBI.
+              </p>
+            </div>
+            <div className="w-full md:w-auto flex flex-col items-center gap-2 shrink-0">
+              <a
+                href={calBookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-[#CBFF54] text-[#063231] font-black text-base shadow-lg shadow-[#CBFF54]/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-center"
+              >
+                <span>📅</span>
+                <span>Agendar Cita (Datos precargados)</span>
+              </a>
+              <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                <span>✓</span> Sin compromiso · Videollamada Google Meet de 15 min
+              </span>
+            </div>
+          </div>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">

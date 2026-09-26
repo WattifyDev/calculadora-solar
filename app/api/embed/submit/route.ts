@@ -1666,6 +1666,7 @@ export async function POST(request: Request) {
 
         // Save to database
         let senderEmail: string | undefined = 'Informe Solar';
+        let savedSubmissionId: string | null = null;
         try {
             const newSubmission = await prisma.submission.create({
                 data: {
@@ -1767,6 +1768,7 @@ export async function POST(request: Request) {
                 console.log('No user with SMTP configuration found and no SMTP_* in .env - email not sent');
             }
 
+            savedSubmissionId = newSubmission.id;
             console.log('Submission saved to database with ID:', newSubmission.id);
             dispatchCalculadoraToN8n(newSubmission, country, { base64: data.invoiceBase64, fileName: data.invoiceFileName });
         } catch (dbError) {
@@ -1774,6 +1776,7 @@ export async function POST(request: Request) {
             if (process.env.NODE_ENV === 'development' || (origin && origin.includes('localhost'))) {
                 console.warn('[SUBMIT] Local dev mode: DB offline, creating mock submission for email dispatch');
 
+                let mockId: string = `local-${Date.now()}`;
                 // If SMTP is provided via .env, send the email even if DB is offline!
                 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
                     const fallbackEmailUser: any = {
@@ -1784,7 +1787,7 @@ export async function POST(request: Request) {
                         smtpFrom: process.env.SMTP_FROM || process.env.SMTP_USER,
                     };
                     const mockSubmission: any = {
-                        id: `local-${Date.now()}`,
+                        id: mockId,
                         createdAt: new Date(),
                         address: data.location,
                         city: city,
@@ -1838,6 +1841,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         success: true,
+                        submissionId: mockId,
                         message: 'Datos recibidos correctamente',
                         senderEmail: 'Informe Solar',
                         orthophotoUrl: orthophotoUrl,
@@ -1857,6 +1861,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
             {
                 success: true,
+                submissionId: savedSubmissionId,
                 message: 'Datos recibidos correctamente',
                 senderEmail: 'Informe Solar',
                 orthophotoUrl: orthophotoUrl,

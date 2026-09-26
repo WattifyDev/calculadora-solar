@@ -638,10 +638,10 @@
     #${containerId} .solar-calc__scanner-modal {
       display: none !important;
       position: absolute !important;
-      top: 10% !important;
-      bottom: 10% !important;
-      left: 10% !important;
-      right: 10% !important;
+      top: 4% !important;
+      bottom: 4% !important;
+      left: 5% !important;
+      right: 5% !important;
       background: radial-gradient(circle at center, rgba(255, 255, 255, 0.98) 0%, rgba(240, 253, 244, 0.96) 100%) !important;
       backdrop-filter: blur(10px) !important;
       border-radius: 20px !important;
@@ -649,9 +649,11 @@
       z-index: 50 !important;
       flex-direction: column !important;
       align-items: center !important;
-      justify-content: center !important;
+      justify-content: flex-start !important;
       padding: 24px 20px !important;
       text-align: center !important;
+      max-height: 92vh !important;
+      overflow-y: auto !important;
     }
 
     #${containerId} .solar-calc__scanner-modal.visible {
@@ -3292,10 +3294,48 @@
               </div>`
             : '';
 
+          // Construct Cal.com Data Passing URL
+          const calBaseUrl = (data.panelApplication || '').toUpperCase() === 'INDUSTRIAL'
+            ? 'https://cal.com/wattify/auditoria-industrial'
+            : 'https://cal.com/wattify/estudio-residencial';
+
+          const solarNotes = [
+            data.location ? `Ubicación: ${data.location}` : '',
+            data.monthlyElectricityBillAmount ? `Factura: ${data.monthlyElectricityBillAmount} ${data.averagePriceCurrency || '€'}` : '',
+            selectedInvoiceBase64 ? 'Factura adjunta: Sí' : ''
+          ].filter(Boolean).join(' | ');
+
+          const calParams = new URLSearchParams();
+          if (customerName) calParams.set('name', customerName);
+          if (data.email) calParams.set('email', data.email);
+          if (data.phone) calParams.set('phone', data.phone);
+          if (solarNotes) calParams.set('notes', solarNotes);
+          if (result.submissionId) calParams.set('leadId', result.submissionId);
+          if (data.location) calParams.set('location', data.location);
+
+          const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
+
           modalConfirmMsg.innerHTML = `
             En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br><br>
             <em>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</em>
             ${invoiceNoticeHtml}
+            <div style="margin-top: 16px; padding: 16px 18px; background: linear-gradient(135deg, #0b1329 0%, #172554 100%); border: 1.5px solid #1e3a8a; border-radius: 12px; text-align: left; color: #ffffff; box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.3);">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #CBFF54; color: #063231; padding: 3px 9px; border-radius: 100px;">
+                  <span>⚡</span> Paso Recomendado
+                </span>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">15 min · Videollamada Google Meet</span>
+              </div>
+              <h4 style="font-size: 14.5px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif;">
+                ¿Quieres revisar tu estudio y bonificaciones con un ingeniero?
+              </h4>
+              <p style="font-size: 11.5px; line-height: 1.45; color: #cbd5e1; margin-bottom: 14px;">
+                Reserva ahora una videollamada técnica sin compromiso. Analizaremos tu tejado en detalle, la compensación de excedentes y las deducciones de IBI / IRPF.
+              </p>
+              <a href="${calBookingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px 16px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13px; text-decoration: none; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 12px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
+                <span>📅</span> <span>Agendar videollamada con un ingeniero (Datos precargados)</span>
+              </a>
+            </div>
           `;
           modalConfirmBox.style.display = 'block';
         }
