@@ -388,9 +388,14 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
                     return;
                 }
             } else {
-                // Assume base64
+                // Assume base64 — strip Data URI prefix if present (e.g. "data:application/pdf;base64,")
                 try {
-                    buffer = Buffer.from(datasheet, 'base64');
+                    let rawBase64 = datasheet;
+                    if (rawBase64.includes('base64,')) {
+                        rawBase64 = rawBase64.split('base64,')[1];
+                        console.log(`[EMAIL] Stripped Data URI prefix from ${type} datasheet PDF`);
+                    }
+                    buffer = Buffer.from(rawBase64, 'base64');
                 } catch (err) {
                     console.error(`[EMAIL] Failed to decode base64 datasheet PDF for ${type}:`, err);
                     return;
