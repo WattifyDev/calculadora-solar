@@ -18,7 +18,7 @@ declare global {
 export function CalPopupButton({
   calUrl,
   calPath,
-  label = "Agendar Cita (Pop-up Modal)",
+  label = "Agendar videollamada con un ingeniero",
   className,
 }: CalPopupButtonProps) {
   useEffect(() => {

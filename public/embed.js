@@ -1489,9 +1489,9 @@
               <div class="solar-calc__scanner-progress" id="submissionModalProgressBox-${containerId}">
                 <div class="solar-calc__scanner-bar" id="submissionModalProgressBar-${containerId}"></div>
               </div>
-              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 18px; width: 100%; max-width: 440px;">
-                <p id="submissionModalConfirmMsg-${containerId}" style="font-size: 13px; color: #334155; line-height: 1.5; margin-bottom: 18px; background: #ffffff; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05);"></p>
-                <button type="button" id="submissionModalCloseBtn-${containerId}" class="solar-calc__button solar-calc__button--primary" style="width: 100%; font-weight: 700;">
+              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 16px; width: 100%; max-width: 440px;">
+                <div id="submissionModalConfirmMsg-${containerId}" style="margin-bottom: 14px;"></div>
+                <button type="button" id="submissionModalCloseBtn-${containerId}" class="solar-calc__button" style="width: 100%; font-weight: 600; font-size: 13px; background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s ease;">
                   Finalizar y Volver al Sitio
                 </button>
               </div>
@@ -3362,12 +3362,6 @@
         if (modalProgressBox) modalProgressBox.style.display = 'none';
 
         if (modalConfirmBox && modalConfirmMsg) {
-          const invoiceNoticeHtml = selectedInvoiceBase64 
-            ? `<div style="margin-top: 14px; padding: 10px 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 10px; color: #065f46; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
-                <span>🛡️</span> <span>Tu factura adjunta ha sido verificada por antivirus e incorporada a tu expediente.</span>
-              </div>`
-            : '';
-
           // Construct Cal.com Data Passing URL with verified active handles
           let calBaseUrl = 'https://cal.com/wattify-es/15min';
           const detectedC = (detectedCountry || (typeof currentCountryInfo !== 'undefined' && currentCountryInfo ? currentCountryInfo.country : '') || data.country || '').toLowerCase();
@@ -3394,24 +3388,31 @@
           const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
 
           modalConfirmMsg.innerHTML = `
-            En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br><br>
-            <em>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</em>
-            ${invoiceNoticeHtml}
-            <div style="margin-top: 16px; padding: 16px 18px; background: linear-gradient(135deg, #0b1329 0%, #172554 100%); border: 1.5px solid #1e3a8a; border-radius: 12px; text-align: left; color: #ffffff; box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.3);">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="background: #ffffff; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 13px; color: #334155; line-height: 1.5; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <span style="font-size: 18px; line-height: 1;">✉️</span>
+                <div>
+                  En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br>
+                  <span style="font-size: 11.5px; color: #64748b; margin-top: 4px; display: inline-block;">Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px; padding: 18px 20px; background: #063231; border: 1.5px solid rgba(203, 255, 84, 0.25); border-radius: 14px; text-align: left; color: #ffffff; box-shadow: 0 10px 25px -5px rgba(6, 50, 49, 0.25);">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                 <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #CBFF54; color: #063231; padding: 3px 9px; border-radius: 100px;">
                   <span>⚡</span> Paso Recomendado
                 </span>
                 <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">15 min · Videollamada Google Meet</span>
               </div>
-              <h4 style="font-size: 14.5px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif;">
-                ¿Quieres revisar tu estudio y bonificaciones con un ingeniero?
+              <h4 style="font-size: 15px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif; letter-spacing: -0.01em;">
+                ¿Quieres revisar tu estudio con un ingeniero?
               </h4>
-              <p style="font-size: 11.5px; line-height: 1.45; color: #cbd5e1; margin-bottom: 14px;">
-                Reserva ahora una videollamada técnica sin compromiso. Analizaremos tu tejado en detalle, la compensación de excedentes y las deducciones de IBI / IRPF.
+              <p style="font-size: 12px; line-height: 1.5; color: #cbd5e1; margin-bottom: 16px;">
+                Analizaremos tu cubierta en detalle, la compensación de excedentes y las deducciones fiscales aplicables a tu caso sin compromiso.
               </p>
-              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px 16px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13px; text-decoration: none; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 12px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
-                <span>📅</span> <span>Agendar videollamada con un ingeniero (Pop-up Modal)</span>
+              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13.5px; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(203, 255, 84, 0.35); text-align: center; box-sizing: border-box;">
+                <span>📅</span> <span>Agendar videollamada con un ingeniero</span>
               </button>
             </div>
           `;

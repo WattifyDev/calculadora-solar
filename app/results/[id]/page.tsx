@@ -130,7 +130,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <div className="w-full md:w-auto flex flex-col items-center gap-2 shrink-0">
               <CalPopupButton
                 calUrl={calBookingUrl}
-                label="Agendar Cita (Pop-up Modal)"
+                label="Agendar videollamada con un ingeniero"
               />
               <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
                 <span>✓</span> Sin compromiso · Videollamada Google Meet de 15 min
