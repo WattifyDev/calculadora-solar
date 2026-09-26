@@ -46,6 +46,64 @@
 
   const formOrigin = window.location.origin;
 
+  // Initialize Cal.com modal embed globally if not already loaded
+  if (!window.Cal) {
+    (function (C, A, L) { 
+      let p = function (a, ar) { a.q.push(ar); }; 
+      let d = C.document; 
+      C.Cal = C.Cal || function () { 
+        let cal = C.Cal; let ar = arguments; 
+        if (!cal.loaded) { 
+          cal.ns = {}; cal.q = cal.q || []; 
+          d.head.appendChild(d.createElement("script")).src = A; 
+          cal.loaded = true; 
+        } 
+        if (ar[0] === L) { 
+          const api = function () { p(api, arguments); }; 
+          const namespace = ar[1]; 
+          api.q = api.q || []; 
+          if(typeof namespace === "string"){
+            cal.ns[namespace] = cal.ns[namespace] || api;
+            p(cal.ns[namespace], ar);
+            p(cal, ["initNamespace", namespace]);
+          } else p(cal, ar); 
+          return; 
+        } 
+        p(cal, ar); 
+      }; 
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+  }
+
+  try {
+    if (window.Cal) {
+      window.Cal("init", { origin: "https://cal.com" });
+      window.Cal("ui", {
+        styles: { branding: { brandColor: "#063231" } },
+        hideEventTypeDetails: false,
+        layout: "month_view"
+      });
+    }
+  } catch (e) {
+    console.warn("[EMBED] Cal.com init error:", e);
+  }
+
+  const openCalModal = (urlOrPath) => {
+    let target = urlOrPath || 'wattify-es/15min';
+    let calPath = target;
+    if (target.indexOf('cal.com/') !== -1) {
+      calPath = target.substring(target.indexOf('cal.com/') + 8);
+    }
+    calPath = calPath.replace(/^\/+/, '');
+    if (window.Cal) {
+      window.Cal("modal", {
+        calLink: calPath,
+        config: { layout: "month_view" }
+      });
+    } else {
+      window.open(`https://cal.com/${calPath}`, '_blank');
+    }
+  };
+
   // Load Google Maps API with provided key
   const loadGoogleMaps = () => {
     const script = document.createElement('script');
@@ -1519,6 +1577,21 @@
       openDialog();
     });
   });
+
+  // Universal Host-Page Interceptor: Enforce Cal.com links to open in Pop-up Modal without leaving the site
+  document.addEventListener('click', (e) => {
+    const calTarget = e.target.closest && e.target.closest('a[href*="cal.com"], button[data-cal-link], [data-cal-link]');
+    if (calTarget) {
+      const href = calTarget.getAttribute('href') || '';
+      const dataLink = calTarget.getAttribute('data-cal-link');
+      const targetUrl = dataLink || href;
+      if (targetUrl) {
+        e.preventDefault();
+        e.stopPropagation();
+        openCalModal(targetUrl);
+      }
+    }
+  }, true);
 
   // Close dialog when clicking outside
   dialog.addEventListener('click', (e) => {
@@ -3337,12 +3410,22 @@
               <p style="font-size: 11.5px; line-height: 1.45; color: #cbd5e1; margin-bottom: 14px;">
                 Reserva ahora una videollamada técnica sin compromiso. Analizaremos tu tejado en detalle, la compensación de excedentes y las deducciones de IBI / IRPF.
               </p>
-              <a href="${calBookingUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px 16px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13px; text-decoration: none; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 12px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
-                <span>📅</span> <span>Agendar videollamada con un ingeniero (Datos precargados)</span>
-              </a>
+              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px 16px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13px; text-decoration: none; transition: transform 0.2s, background-color 0.2s; box-shadow: 0 4px 12px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
+                <span>📅</span> <span>Agendar videollamada con un ingeniero (Pop-up Modal)</span>
+              </button>
             </div>
           `;
           modalConfirmBox.style.display = 'block';
+
+          // Direct click listener in Shadow DOM for Pop-up Modal execution
+          const calPopupBtn = modalConfirmMsg.querySelector('.solar-calc__cal-popup-btn');
+          if (calPopupBtn) {
+            calPopupBtn.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openCalModal(calBookingUrl);
+            });
+          }
         }
 
         if (modalCloseBtn) {

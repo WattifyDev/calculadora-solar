@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { getSolarResults } from "@/lib/data"
 import { User, Home, Wrench, BarChart2, Info, BadgePercent } from "lucide-react"
+import { CalPopupButton } from "@/components/cal-popup-button"
 
 function formatCurrency(amount: number | null | undefined, currency: string = 'EUR') {
   if (amount === null || typeof amount === 'undefined') return 'N/A';
@@ -127,15 +128,10 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
               </p>
             </div>
             <div className="w-full md:w-auto flex flex-col items-center gap-2 shrink-0">
-              <a
-                href={calBookingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-[#CBFF54] text-[#063231] font-black text-base shadow-lg shadow-[#CBFF54]/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-center"
-              >
-                <span>📅</span>
-                <span>Agendar Cita (Datos precargados)</span>
-              </a>
+              <CalPopupButton
+                calUrl={calBookingUrl}
+                label="Agendar Cita (Pop-up Modal)"
+              />
               <span className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
                 <span>✓</span> Sin compromiso · Videollamada Google Meet de 15 min
               </span>
