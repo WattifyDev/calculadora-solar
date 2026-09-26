@@ -35,7 +35,7 @@ import {
 } from '@/lib/solar-financial-calculations';
 import { getIvaRate, convertEurToCop, convertEurToGtq } from '@/lib/currency';
 
-async function dispatchCalculadoraToN8n(submission: any, country?: string) {
+async function dispatchCalculadoraToN8n(submission: any, country?: string, invoice?: { base64?: string; fileName?: string }) {
     try {
         const n8nWebhookUrl = process.env.N8N_LEADS_WEBHOOK_URL || 'https://api-n8n.wattify.es/webhook/formbricks-leads';
         const gsd = submission.googleSolarData || {};
@@ -49,10 +49,15 @@ async function dispatchCalculadoraToN8n(submission: any, country?: string) {
         const paybackYears = submission.paybackYears || gsd.paybackYears || null;
         const pdfUrl = `https://calculadora-solar.wattify.es/api/pdf/${submission.id}`;
 
+        const invoiceBase64 = invoice?.base64 || submission.invoiceBase64;
+        const invoiceFileName = invoice?.fileName || submission.invoiceFileName;
+
         const payload = {
             source: 'calculadora_solar',
             id: submission.id,
             submissionId: submission.id,
+            hasInvoice: Boolean(invoiceBase64),
+            invoiceFileName: invoiceFileName || null,
             data: {
                 name: submission.userName || 'Cliente Calculadora',
                 email: submission.userEmail || '',
@@ -74,7 +79,9 @@ async function dispatchCalculadoraToN8n(submission: any, country?: string) {
                 pdfUrl: pdfUrl,
                 panelApplication: submission.panelApplication || 'RESIDENCIAL',
                 latitude: submission.latitude,
-                longitude: submission.longitude
+                longitude: submission.longitude,
+                hasInvoice: Boolean(invoiceBase64),
+                invoiceFileName: invoiceFileName || null
             },
             userName: submission.userName || 'Cliente Calculadora',
             userEmail: submission.userEmail || '',
@@ -105,6 +112,31 @@ async function dispatchCalculadoraToN8n(submission: any, country?: string) {
         }).catch(err => {
             console.error('[N8N DISPATCH ERROR] Failed to dispatch to n8n:', err.message);
         });
+
+        // Disparo al escáner antivirus y OCR si se adjuntó factura
+        if (invoiceBase64) {
+            const scannerWebhookUrl = process.env.N8N_SCAN_ATTACHMENT_WEBHOOK_URL || 'https://api-n8n.wattify.es/webhook/scan-attachment';
+            const rawBase64 = invoiceBase64.includes(',') ? invoiceBase64.split(',')[1] : invoiceBase64;
+            const scannerPayload = {
+                base64Content: rawBase64,
+                fileName: invoiceFileName || 'factura_calculadora.pdf',
+                senderName: submission.userName || 'Cliente Calculadora',
+                senderEmail: submission.userEmail || '',
+                senderPhone: submission.userPhone || '',
+                leadId: submission.id,
+                source: 'calculadora_solar'
+            };
+
+            fetch(scannerWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(scannerPayload)
+            }).then(res => {
+                console.log(`[SCANNER DISPATCH] Invoice for lead ${submission.id} sent to scan-attachment, status: ${res.status}`);
+            }).catch(err => {
+                console.error('[SCANNER DISPATCH ERROR] Failed to dispatch invoice to scanner:', err.message);
+            });
+        }
     } catch (e: any) {
         console.error('[N8N DISPATCH EXCEPTION]', e?.message || e);
     }
@@ -167,6 +199,8 @@ interface EmbedFormData {
     polygonCoordinates?: string;
     hasBattery?: boolean | string;
     selectedSegmentIndices?: number[] | string;
+    invoiceBase64?: string;
+    invoiceFileName?: string;
 }
 
 // New type for cost breakdown (mirror from calculate route)
@@ -1529,7 +1563,7 @@ export async function POST(request: Request) {
                     console.log('No user with SMTP configuration found - email not sent');
                 }
                 // Return response
-                dispatchCalculadoraToN8n(newSubmission, country);
+                dispatchCalculadoraToN8n(newSubmission, country, { base64: data.invoiceBase64, fileName: data.invoiceFileName });
                 return NextResponse.json(
                     {
                         success: true,
@@ -1734,7 +1768,7 @@ export async function POST(request: Request) {
             }
 
             console.log('Submission saved to database with ID:', newSubmission.id);
-            dispatchCalculadoraToN8n(newSubmission, country);
+            dispatchCalculadoraToN8n(newSubmission, country, { base64: data.invoiceBase64, fileName: data.invoiceFileName });
         } catch (dbError) {
             console.error('Database error saving submission:', dbError);
             if (process.env.NODE_ENV === 'development' || (origin && origin.includes('localhost'))) {
@@ -1796,7 +1830,7 @@ export async function POST(request: Request) {
                         console.error('[SUBMIT-LOCAL] Email sending failed with env SMTP:', emailError);
                     });
                     console.log('[SUBMIT-LOCAL] Email triggered using .env SMTP configuration');
-                    dispatchCalculadoraToN8n(mockSubmission, country);
+                    dispatchCalculadoraToN8n(mockSubmission, country, { base64: data.invoiceBase64, fileName: data.invoiceFileName });
                 } else {
                     console.log('[SUBMIT-LOCAL] DB is offline and no SMTP_* variables in .env. To test email locally, add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM to .env');
                 }

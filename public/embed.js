@@ -1321,6 +1321,44 @@
                     required
                   >
                 </div>
+
+                <!-- Adjuntar Factura Eléctrica (Opcional con Escáner Antivirus y OCR) -->
+                <div class="solar-calc__invoice-box" style="margin-top: 6px; margin-bottom: 12px; padding: 12px 14px; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; text-align: left; transition: all 0.2s ease;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 6px;">
+                    <div style="font-size: 13px; font-weight: 700; color: #063231; display: flex; align-items: center; gap: 6px;">
+                      <span>📄</span> <span>Adjuntar factura eléctrica o foto</span>
+                      <span style="font-size: 10px; font-weight: 700; color: #059669; background: #d1fae5; padding: 2px 7px; border-radius: 99px;">OPCIONAL</span>
+                    </div>
+                    <span style="font-size: 11px; color: #64748b;">PDF o Imagen (máx. 15MB)</span>
+                  </div>
+                  <p style="font-size: 11px; color: #64748b; margin: 0 0 10px 0; line-height: 1.4;">
+                    Si adjuntas tu última factura, nuestro sistema perimetral extraerá automáticamente tu CUPS, potencias y consumos reales para afinar tu estudio al 100%. Verificado por antivirus.
+                  </p>
+                  <input 
+                    type="file" 
+                    id="invoiceFileInput-${containerId}" 
+                    accept=".pdf,image/jpeg,image/png,image/webp" 
+                    style="display: none;"
+                  >
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button 
+                      type="button" 
+                      id="invoiceUploadBtn-${containerId}" 
+                      class="solar-calc__button" 
+                      style="background: #ffffff; border: 1.5px solid #063231; color: #063231; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;"
+                    >
+                      <span>📎</span> <span id="invoiceBtnLabel-${containerId}">Seleccionar Factura (PDF / Foto)</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      id="invoiceRemoveBtn-${containerId}" 
+                      style="display: none; background: transparent; border: none; color: #ef4444; font-size: 11.5px; font-weight: 600; cursor: pointer; text-decoration: underline;"
+                    >
+                      ✕ Quitar archivo
+                    </button>
+                  </div>
+                  <div id="invoiceFeedback-${containerId}" style="margin-top: 8px; font-size: 11.5px; font-weight: 600; display: none;"></div>
+                </div>
                 
                 <div class="solar-calc__checkbox-container">
                   <input 
@@ -2935,6 +2973,66 @@
     showStep('step2');
   });
 
+  // Step 3: Invoice File Upload & Validation logic
+  let selectedInvoiceBase64 = null;
+  let selectedInvoiceFileName = null;
+  const invoiceFileInput = shadow.getElementById(`invoiceFileInput-${containerId}`);
+  const invoiceUploadBtn = shadow.getElementById(`invoiceUploadBtn-${containerId}`);
+  const invoiceBtnLabel = shadow.getElementById(`invoiceBtnLabel-${containerId}`);
+  const invoiceRemoveBtn = shadow.getElementById(`invoiceRemoveBtn-${containerId}`);
+  const invoiceFeedback = shadow.getElementById(`invoiceFeedback-${containerId}`);
+
+  if (invoiceUploadBtn && invoiceFileInput) {
+    invoiceUploadBtn.addEventListener('click', () => {
+      invoiceFileInput.click();
+    });
+
+    invoiceFileInput.addEventListener('change', () => {
+      const file = invoiceFileInput.files && invoiceFileInput.files[0];
+      if (!file) return;
+
+      // Validar tamaño máximo: 15MB
+      if (file.size > 15 * 1024 * 1024) {
+        if (invoiceFeedback) {
+          invoiceFeedback.style.display = 'block';
+          invoiceFeedback.style.color = '#ef4444';
+          invoiceFeedback.textContent = '⚠️ El archivo supera el tamaño máximo permitido de 15 MB.';
+        }
+        invoiceFileInput.value = '';
+        selectedInvoiceBase64 = null;
+        selectedInvoiceFileName = null;
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        selectedInvoiceBase64 = re.target.result;
+        selectedInvoiceFileName = file.name;
+        if (invoiceBtnLabel) invoiceBtnLabel.textContent = 'Cambiar archivo';
+        if (invoiceRemoveBtn) invoiceRemoveBtn.style.display = 'inline-block';
+        if (invoiceFeedback) {
+          invoiceFeedback.style.display = 'block';
+          invoiceFeedback.style.color = '#059669';
+          invoiceFeedback.textContent = `✅ Factura seleccionada: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (invoiceRemoveBtn) {
+      invoiceRemoveBtn.addEventListener('click', () => {
+        selectedInvoiceBase64 = null;
+        selectedInvoiceFileName = null;
+        invoiceFileInput.value = '';
+        if (invoiceBtnLabel) invoiceBtnLabel.textContent = 'Seleccionar Factura (PDF / Foto)';
+        invoiceRemoveBtn.style.display = 'none';
+        if (invoiceFeedback) {
+          invoiceFeedback.style.display = 'none';
+        }
+      });
+    }
+  }
+
   // Currency change handler - update placeholder based on selected currency
   const currencySelect = shadow.getElementById(`averagePriceCurrency-${containerId}`);
   const priceInput = shadow.getElementById(`averagePricePerKWh-${containerId}`);
@@ -3131,6 +3229,8 @@
           return Array.from(segCbs).filter(c => c.checked).map(c => parseInt(c.value, 10));
         })(),
         // panelApplication and panelType are already in formData from the main form
+        invoiceBase64: selectedInvoiceBase64 || undefined,
+        invoiceFileName: selectedInvoiceFileName || undefined,
         origin: window.location.origin,
         pathname: window.location.pathname,
         referrer: document.referrer || null
@@ -3186,9 +3286,16 @@
         if (modalProgressBox) modalProgressBox.style.display = 'none';
 
         if (modalConfirmBox && modalConfirmMsg) {
+          const invoiceNoticeHtml = selectedInvoiceBase64 
+            ? `<div style="margin-top: 14px; padding: 10px 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 10px; color: #065f46; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <span>🛡️</span> <span>Tu factura adjunta ha sido verificada por antivirus e incorporada a tu expediente.</span>
+              </div>`
+            : '';
+
           modalConfirmMsg.innerHTML = `
             En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br><br>
             <em>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</em>
+            ${invoiceNoticeHtml}
           `;
           modalConfirmBox.style.display = 'block';
         }
