@@ -73,7 +73,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     createdAt,
   } = results;
 
-  const calBaseUrl = 'https://cal.com/wattify/estudio-residencial';
+  let calBaseUrl = 'https://cal.com/wattify-es/15min';
+  const cCountry = (results.country || '').toLowerCase();
+  if (cCountry.includes('colombia') || currencyCode === 'COP') {
+    calBaseUrl = 'https://cal.com/wattify-es/colombia';
+  } else if (cCountry.includes('guatemala') || currencyCode === 'GTQ') {
+    calBaseUrl = 'https://cal.com/wattify-es/guatemala';
+  }
   const notes = [
     address ? `Ubicación: ${address}, ${city || ''}` : '',
     installationSizeKW ? `Potencia: ${installationSizeKW} kWp (${panelCount || ''} paneles)` : '',

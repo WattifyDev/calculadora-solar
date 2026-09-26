@@ -1510,9 +1510,10 @@
   triggerButton.addEventListener('click', openDialog);
   closeButton.addEventListener('click', closeDialog);
 
-  // Also bind to any external Elementor button or host trigger
-  const externalTriggers = document.querySelectorAll('.elementor-element-53bed2f a, a[href*="#calculadora"], .solar-calc-open');
+  // Only bind to triggers explicitly intended for opening the solar calculator (NEVER hijack Cal.com or meeting buttons)
+  const externalTriggers = document.querySelectorAll('a[href*="#calculadora"], .solar-calc-open, [data-open-calculator]');
   externalTriggers.forEach(btn => {
+    if (btn.href && (btn.href.includes('cal.com') || btn.closest('.elementor-element-53bed2f'))) return;
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       openDialog();
@@ -3294,10 +3295,14 @@
               </div>`
             : '';
 
-          // Construct Cal.com Data Passing URL
-          const calBaseUrl = (data.panelApplication || '').toUpperCase() === 'INDUSTRIAL'
-            ? 'https://cal.com/wattify/auditoria-industrial'
-            : 'https://cal.com/wattify/estudio-residencial';
+          // Construct Cal.com Data Passing URL with verified active handles
+          let calBaseUrl = 'https://cal.com/wattify-es/15min';
+          const detectedC = (detectedCountry || (typeof currentCountryInfo !== 'undefined' && currentCountryInfo ? currentCountryInfo.country : '') || data.country || '').toLowerCase();
+          if (detectedC.includes('colombia') || (data.currencyCode || '').toUpperCase() === 'COP') {
+            calBaseUrl = 'https://cal.com/wattify-es/colombia';
+          } else if (detectedC.includes('guatemala') || (data.currencyCode || '').toUpperCase() === 'GTQ') {
+            calBaseUrl = 'https://cal.com/wattify-es/guatemala';
+          }
 
           const solarNotes = [
             data.location ? `Ubicación: ${data.location}` : '',
