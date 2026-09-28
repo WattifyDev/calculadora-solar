@@ -304,9 +304,9 @@ export async function POST(request: Request) {
             try {
                 const originHostname = getHostnameFromOrigin(origin);
                 if (originHostname) {
-                    // Use a separate variable for the partial select
+                    // Only match domains configured by ADMIN users
                     const userDomainSettings = await prisma.user.findMany({
-                        where: { domain: { not: null } },
+                        where: { domain: { not: null }, role: 'ADMIN' },
                         select: {
                             domain: true,
                             priceKW: true,
@@ -321,8 +321,11 @@ export async function POST(request: Request) {
                     });
                     const matched = userDomainSettings.find(user => user.domain && isSubdomainOf(originHostname, user.domain));
                     if (matched) {
-                        if (matched.priceKW !== null) effectivePriceKW = matched.priceKW;
-                        userDefinedCurrency = matched.priceKWCurrency as 'EUR' | 'COP' | null;
+                        // Protect against electricity tariff confusion (installation price per kWp is always >= 100)
+                        if (matched.priceKW !== null && matched.priceKW >= 100) {
+                            effectivePriceKW = matched.priceKW;
+                            userDefinedCurrency = matched.priceKWCurrency as 'EUR' | 'COP' | null;
+                        }
 
                         if (matched.inverterCostPercentage !== null) invCostPercent = matched.inverterCostPercentage;
                         if (matched.commissioningLegalizationPercentage !== null) commLegPercent = matched.commissioningLegalizationPercentage;
