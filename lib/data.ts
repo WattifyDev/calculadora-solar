@@ -42,6 +42,7 @@ export async function getSolarResults(id: string): Promise<any> {
     city: submission.city || "",
     country: submission.country,
     userName: submission.userName || '',
+    userLastName: submission.userLastName || '',
     userEmail: submission.userEmail || '',
     userPhone: submission.userPhone || '',
     // Installation details

@@ -237,7 +237,7 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
     // --- PDF PROPS ---
     const pdfProps: SubmissionPDFProps = {
         // Client info
-        userName: submission.userName || 'No proporcionado',
+        userName: [submission.userName, (submission as any).userLastName].filter(Boolean).join(' ') || 'No proporcionado',
         userEmail: submission.userEmail || 'No proporcionado',
         userPhone: submission.userPhone || 'No proporcionado',
         address: submission.address || 'No proporcionada',

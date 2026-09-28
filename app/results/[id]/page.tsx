@@ -48,6 +48,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
   const {
     userName,
+    userLastName,
     userEmail,
     userPhone,
     address,
@@ -91,7 +92,8 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
   ].filter(Boolean).join(' | ');
 
   const calParams = new URLSearchParams();
-  if (userName) calParams.set('name', userName);
+  const fullName = [userName, userLastName].filter(Boolean).join(' ');
+  if (fullName) calParams.set('name', fullName);
   if (userEmail) calParams.set('email', userEmail);
   if (userPhone) calParams.set('phone', userPhone);
   if (notes) calParams.set('notes', notes);
@@ -183,7 +185,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                 <h2 className="text-lg font-bold tracking-tight">Información del Cliente</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700">
-                <div><span className="font-medium">Nombre:</span> {userName || 'No proporcionado'}</div>
+                <div><span className="font-medium">Nombre:</span> {[userName, userLastName].filter(Boolean).join(' ') || 'No proporcionado'}</div>
                 <div><span className="font-medium">Email:</span> {userEmail || 'No proporcionado'}</div>
                 <div><span className="font-medium">Teléfono:</span> {userPhone || 'No proporcionado'}</div>
                 <div><span className="font-medium">Dirección:</span> {address || 'No proporcionada'}</div>

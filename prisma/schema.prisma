@@ -56,6 +56,7 @@ model Submission {
   latitude                     Float?
   longitude                    Float?
   userName                     String?
+  userLastName                 String?
   userEmail                    String?
   userPhone                    String?
   hasUserInfo                  Boolean           @default(false)

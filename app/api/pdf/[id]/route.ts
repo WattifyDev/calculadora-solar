@@ -57,7 +57,7 @@ export async function GET(
             : 'En esta propuesta se ha incluido la bonificación derivada de la instalación de paneles solares del IRPF y que consiste en un 40% del precio del proyecto que se reducirá de la base imponible del cliente. Hemos tenido en cuenta un 30%.';
 
         const pdfProps = {
-            userName: submission.userName || 'No proporcionado',
+            userName: [submission.userName, (submission as any).userLastName].filter(Boolean).join(' ') || 'No proporcionado',
             userEmail: submission.userEmail || 'No proporcionado',
             userPhone: submission.userPhone || 'No proporcionado',
             address: submission.address || 'No proporcionada',

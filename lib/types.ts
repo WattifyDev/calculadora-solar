@@ -80,6 +80,7 @@ export interface UserSubmission {
   country: string
   hasUserInfo: boolean
   userName: string | null
+  userLastName?: string | null
   userEmail: string | null
   userPhone: string | null
   origin: string | null

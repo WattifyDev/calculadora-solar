@@ -27,12 +27,14 @@ Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura exac
   "cups": "Código CUPS si la factura es de España (ej: ES00...)",
   "consumptionKwh": 0,
   "monthlyBill": 0,
-  "userName": "Nombre o razón social del titular del contrato",
+  "userName": "Nombre de pila del titular del contrato (o razón social completa si es una empresa)",
+  "userLastName": "Apellidos del titular del contrato (dejar null si es empresa o no constan)",
   "tariff": "Tarifa de acceso si aparece (ej: 2.0TD, 3.0TD)",
   "country": "ES o CO o GT"
 }
 Reglas:
 - Si el consumo mensual no está explícito pero hay histórico o anual, calcula el promedio mensual en kWh.
+- En el titular del contrato, separa estrictamente el nombre de pila ("userName") de los apellidos ("userLastName"). Si es una empresa o persona jurídica, pon el nombre de la empresa en "userName" y "userLastName": null.
 - Si no encuentras algún campo en el documento, usa null o 0 según corresponda.`;
 
 export async function POST(request: Request) {
@@ -199,6 +201,8 @@ export async function POST(request: Request) {
                 parsed: Boolean(extractedData),
                 cups: extractedData?.cups || null,
                 address: formattedAddress || extractedData?.address || null,
+                userName: extractedData?.userName || null,
+                userLastName: extractedData?.userLastName || null,
                 source: 'calculadora_solar_initial_scan'
             })
         }).catch(() => {
@@ -222,6 +226,7 @@ export async function POST(request: Request) {
                     monthlyBill: extractedData?.monthlyBill ? Number(extractedData.monthlyBill) : null,
                     cups: extractedData?.cups || null,
                     userName: extractedData?.userName || null,
+                    userLastName: extractedData?.userLastName || null,
                     tariff: extractedData?.tariff || null,
                     country: extractedData?.country || 'ES'
                 } : null,

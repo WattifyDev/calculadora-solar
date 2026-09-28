@@ -35,6 +35,7 @@ export interface SubmissionForTableDisplay extends Pick<PrismaSubmissionType,
   'city' |
   'country' |
   'userName' |
+  'userLastName' |
   'userEmail' |
   'userPhone' |
   'origin' |
@@ -140,7 +141,7 @@ export default function SubmissionsTable({ submissions, currentPage, totalPages,
                   {new Date(submission.createdAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell>{submission.address}</TableCell>
-                <TableCell>{submission.userName || "N/A"}</TableCell>
+                <TableCell>{[submission.userName, submission.userLastName].filter(Boolean).join(" ") || "N/A"}</TableCell>
                 <TableCell>{submission.userEmail || "N/A"}</TableCell>
                 <TableCell>{submission.userPhone || "N/A"}</TableCell>
                 <TableCell>

@@ -40,7 +40,7 @@ function mapSubmissionsForExport(submissions: SubmissionForTableDisplay[]) {
             "ID de la Solicitud": s.id,
             "Fecha de la Solicitud": s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-ES') : 'N/A',
             "Moneda": currency,
-            "Nombre Cliente": s.userName || 'No proporcionado',
+            "Nombre Cliente": [s.userName, (s as any).userLastName].filter(Boolean).join(' ') || 'No proporcionado',
             "Email Cliente": s.userEmail || 'No proporcionado',
             "Teléfono Cliente": s.userPhone || 'No proporcionado',
             "Dirección": s.address || 'No proporcionada',
