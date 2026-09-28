@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { invalidateContactCache } from '@/lib/contact-cache';
 
 // POST /api/contact/meeting
 // Ingesta eventos de reuniones (Cal.com / Webhook) vinculándolos automáticamente a un Contact
@@ -74,6 +75,9 @@ export async function POST(request: NextRequest) {
                     notes: notes || null,
                 },
             });
+
+        // Invalidar caché del contacto
+        invalidateContactCache([normalizedEmail, phone, contact.email, contact.phone]).catch(() => {});
 
         return NextResponse.json({ success: true, contactId: contact.id, meetingId: meeting.id });
     } catch (error: any) {

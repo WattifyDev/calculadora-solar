@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { invalidateContactCache } from '@/lib/contact-cache';
 
 // POST /api/contact/form-entry
 // Ingesta respuestas de formularios (Formbricks / Webhook) vinculándolas a un Contact
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
                 source: body.source || 'formbricks',
             },
         });
+
+        // Invalidar caché del contacto
+        invalidateContactCache([normalizedEmail, phone, contact.email, contact.phone]).catch(() => {});
 
         return NextResponse.json({ success: true, contactId: contact.id, formEntryId: formEntry.id });
     } catch (error: any) {

@@ -4,6 +4,7 @@ import { Client, AddressType, Language, ReverseGeocodingLocationType } from "@go
 import { validateEmbedApiKey, embedRateLimit } from '@/lib/security';
 import { headers } from 'next/headers';
 import { prisma } from '@/lib/db';
+import { invalidateContactCache } from '@/lib/contact-cache';
 import { fetchBuildingInsights, fetchDataLayers, extractRoofSegments } from '@/lib/google-solar';
 import type { GoogleSolarData } from '@/lib/types';
 import type { BuildingInsightsResponse, SolarPanelConfig } from '@/lib/google-solar-types';
@@ -1605,6 +1606,8 @@ export async function POST(request: Request) {
                         where: { id: newSubmission.id },
                         data: { contactId: contact.id },
                     });
+                    // Invalidar caché del contacto
+                    invalidateContactCache([data.email, data.phone, contact.email, contact.phone]).catch(() => {});
                     console.log(`[CONTACT HUB] Contact upserted: ${contact.id} (${contact.email}) → Submission ${newSubmission.id}`);
                 } catch (contactError: any) {
                     // No bloqueante: si falla el Contact Hub, la Submission ya está guardada

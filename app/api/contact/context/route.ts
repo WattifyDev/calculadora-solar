@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getCachedContactContext, setCachedContactContext } from '@/lib/contact-cache';
 
 // GET /api/contact/context?email=xxx&phone=yyy
 // Protegido con API_SECRET_KEY en header Authorization: Bearer xxx
@@ -24,6 +25,22 @@ export async function GET(request: NextRequest) {
             { found: false, error: 'email or phone param required' },
             { status: 400 }
         );
+    }
+
+    const identifier = email || phone || '';
+
+    // 1. Intentar responder desde caché (Redis / Memoria) para máxima velocidad (<10ms)
+    try {
+        const cached = await getCachedContactContext(identifier);
+        if (cached) {
+            return NextResponse.json({
+                ...cached.data,
+                fromCache: true,
+                cacheSource: cached.source,
+            });
+        }
+    } catch {
+        // Continuar a BD si falla la caché
     }
 
     try {
@@ -86,7 +103,7 @@ export async function GET(request: NextRequest) {
         const latestSubmission = contact.submissions[0] || null;
         const latestMeeting = contact.meetings[0] || null;
 
-        return NextResponse.json({
+        const responseData = {
             found: true,
             contact: {
                 id: contact.id,
@@ -135,6 +152,17 @@ export async function GET(request: NextRequest) {
                 submittedAt: f.createdAt,
             })),
             retrievedAt: new Date().toISOString(),
+        };
+
+        // Guardar en caché para llamadas subsecuentes (por email y por teléfono)
+        setCachedContactContext(contact.email, responseData).catch(() => {});
+        if (contact.phone) {
+            setCachedContactContext(contact.phone, responseData).catch(() => {});
+        }
+
+        return NextResponse.json({
+            ...responseData,
+            fromCache: false,
         });
     } catch (error: any) {
         console.error('[CONTACT CONTEXT] Error:', error?.message);
