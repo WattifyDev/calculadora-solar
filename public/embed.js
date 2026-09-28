@@ -1220,25 +1220,6 @@
                 </div>
               </div>
 
-              <!-- Selector de Batería de Almacenamiento -->
-              <div class="solar-calc__battery-card" id="batteryCard-${containerId}">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-                  <div style="text-align: left;">
-                    <div style="font-weight: 600; font-size: 13.5px; color: #1e293b; display: flex; align-items: center; gap: 6px;">
-                      <span>🔋 ¿Deseas Batería de Almacenamiento?</span>
-                      <span id="batteryBadge-${containerId}" style="font-size: 11px; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 999px; font-weight: 600;">Opcional</span>
-                    </div>
-                    <div style="font-size: 11.5px; color: #64748b; margin-top: 3px; line-height: 1.35;">
-                      Aprovecha tu energía por la noche y eleva tu autoconsumo hasta un <strong>90%</strong>.
-                    </div>
-                  </div>
-                  <label class="solar-calc__toggle-switch">
-                    <input type="checkbox" id="hasBattery-${containerId}" name="hasBattery">
-                    <span class="solar-calc__toggle-slider"></span>
-                  </label>
-                </div>
-              </div>
-
               <div class="solar-calc__action-bar">
                 <button type="button" id="backToStep1a-${containerId}" class="solar-calc__button solar-calc__button--back">
                   ← Modificar Ubicación

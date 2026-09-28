@@ -2,6 +2,8 @@ import { notFound } from "next/navigation"
 import { getSolarResults } from "@/lib/data"
 import { User, Home, Wrench, BarChart2, Info, BadgePercent } from "lucide-react"
 import { CalPopupButton } from "@/components/cal-popup-button"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { BatteryTab } from "@/components/battery-tab"
 
 function formatCurrency(amount: number | null | undefined, currency: string = 'EUR') {
   if (amount === null || typeof amount === 'undefined') return 'N/A';
@@ -98,6 +100,21 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
   const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
 
+  const batteryBaseResults = {
+    totalCostWithIva: totalCostWithIva ?? null,
+    firstYearSavings: firstYearSavings ?? null,
+    paybackYears: paybackYears ?? null,
+    lifetimeSavings: lifetimeSavings ?? null,
+    averageKwhConsumption: averageKwhConsumption ?? null,
+    currencyCode: currencyCode || 'EUR',
+    calBookingUrl,
+    userName: userName ?? null,
+    userEmail: userEmail ?? null,
+    userPhone: userPhone ?? null,
+    submissionId: submissionId ?? null,
+    address: address ?? null,
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-2 sm:px-0">
       <div className="container mx-auto max-w-5xl space-y-8">
@@ -139,6 +156,24 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
           </div>
         </section>
 
+        <Tabs defaultValue="solar" className="w-full">
+          <TabsList className="w-full mb-6 h-12 rounded-xl bg-slate-100 p-1 gap-1">
+            <TabsTrigger
+              value="solar"
+              className="flex-1 h-10 rounded-lg text-sm font-bold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow"
+            >
+              ☀️ Tu Instalación Solar
+            </TabsTrigger>
+            <TabsTrigger
+              value="battery"
+              className="flex-1 h-10 rounded-lg text-sm font-bold data-[state=active]:bg-white data-[state=active]:text-emerald-700 data-[state=active]:shadow"
+            >
+              🔋 Añadir Almacenamiento
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── TAB 1: INSTALACIÓN SOLAR ── */}
+          <TabsContent value="solar">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
             {/* Client Info */}
@@ -235,6 +270,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <span className="text-yellow-900 text-base">{incentiveNote}</span>
           </div>
         </section>
+          </TabsContent>
+
+          {/* ── TAB 2: ALMACENAMIENTO CON BATERÍA ── */}
+          <TabsContent value="battery">
+            <BatteryTab baseResults={batteryBaseResults} />
+          </TabsContent>
+        </Tabs>
 
         {/* Footer */}
         <footer className="mx-auto max-w-2xl bg-white rounded-lg shadow border border-gray-200 text-center text-xs text-muted-foreground mt-8 py-4 px-4">
