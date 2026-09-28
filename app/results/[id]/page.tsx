@@ -110,6 +110,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     averageKwhConsumption: averageKwhConsumption ?? null,
     currencyCode: currencyCode || 'EUR',
     calBookingUrl,
+    selectedInverterName: selectedInverterName ?? null,
     userName: userName ?? null,
     userEmail: userEmail ?? null,
     userPhone: userPhone ?? null,
