@@ -3128,7 +3128,11 @@
         data.segments.forEach(seg => {
           const isRec = seg.isRecommended !== false;
           const badgeClass = seg.performanceGrade === 'A' ? 'background: #dcfce7; color: #15803d;' : (seg.performanceGrade === 'B' ? 'background: #fef9c3; color: #854d0e;' : 'background: #f1f5f9; color: #475569;');
-          const orientationIcon = (seg.orientationLabel || '').includes('Sur') ? '☀️' : ((seg.orientationLabel || '').includes('Este') ? '🌤️' : ((seg.orientationLabel || '').includes('Oeste') ? '🌥️' : '☁️');
+          const labelLower = (seg.orientationLabel || '').toLowerCase();
+          let orientationIcon = '☁️';
+          if (labelLower.includes('sur')) orientationIcon = '☀️';
+          else if (labelLower.includes('este')) orientationIcon = '🌤️';
+          else if (labelLower.includes('oeste')) orientationIcon = '🌥️';
 
           html += `
             <label class="solar-calc__segment-card-step1 ${isRec ? 'active' : ''}" style="margin: 0;">
