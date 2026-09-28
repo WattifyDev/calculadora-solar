@@ -629,6 +629,41 @@
       }
     }
 
+    /* Invoice Step 1 Banner */
+    #${containerId} .solar-calc__invoice-step1-banner {
+      background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%) !important;
+      border: 1.5px dashed #86efac !important;
+      border-radius: 12px !important;
+      padding: 12px 14px !important;
+      margin-bottom: 12px !important;
+      text-align: left !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #${containerId} .solar-calc__invoice-step1-banner:hover {
+      border-color: #22c55e !important;
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.08) !important;
+    }
+
+    /* Roof Segment Card Step 1 */
+    #${containerId} .solar-calc__segment-card-step1 {
+      background: #ffffff !important;
+      border: 1.5px solid #e2e8f0 !important;
+      border-radius: 10px !important;
+      padding: 10px 12px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      transition: all 0.2s ease !important;
+      cursor: pointer !important;
+    }
+
+    #${containerId} .solar-calc__segment-card-step1.active {
+      background: #f0fdf4 !important;
+      border-color: #86efac !important;
+      box-shadow: 0 2px 6px rgba(34, 197, 94, 0.1) !important;
+    }
+
     /* Battery Selector Card */
     #${containerId} .solar-calc__battery-card {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
@@ -1029,6 +1064,28 @@
           <!-- Screen 1: Location, Capital Selectors & Map Roof Selection -->
           <div id="step1a-${containerId}" class="solar-calc__step active">
             <div>
+              <!-- Fast Invoice Upload Banner (Silent Security & Auto-Fill) -->
+              <div class="solar-calc__invoice-step1-banner" id="invoiceBannerStep1-${containerId}">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background: #dcfce7; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+                      📄
+                    </div>
+                    <div>
+                      <div style="font-size: 13px; font-weight: 700; color: #063231;">¿Tienes una factura de luz a mano?</div>
+                      <div style="font-size: 11px; color: #64748b;">Súbela en PDF o foto para autocompletar tu dirección y consumo exacto.</div>
+                    </div>
+                  </div>
+                  <div>
+                    <input type="file" id="invoiceFileInputStep1-${containerId}" accept=".pdf,image/jpeg,image/png,image/webp" style="display: none;">
+                    <button type="button" id="invoiceUploadBtnStep1-${containerId}" class="solar-calc__button" style="background: #063231; color: #ffffff; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+                      <span>📎</span> <span id="invoiceBtnLabelStep1-${containerId}">Subir Factura</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="invoiceFeedbackStep1-${containerId}" style="margin-top: 8px; font-size: 11.5px; font-weight: 600; display: none;"></div>
+              </div>
+
               <div class="solar-calc__capitals-bar">
                 <span class="solar-calc__capitals-label">Ir directo a:</span>
                 <button type="button" class="solar-calc__capital-btn" data-lat="40.4168" data-lng="-3.7038" data-country="Spain" data-currency="EUR" data-flag="🇪🇸" data-countryname="España">
@@ -1064,7 +1121,19 @@
 
               <div id="map-${containerId}" class="solar-calc__map-container"></div>
 
-              <div class="solar-calc__map-overlay-guide">
+              <!-- Zonas/Vertientes de tejado detectadas por Google Solar en Pantalla 1 -->
+              <div id="roofSegmentsStep1Container-${containerId}" style="display: none; margin: 12px 0; text-align: left; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                  <div style="font-weight: 700; color: #063231; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                    <span>🏠</span> <span>Vertientes de cubierta detectadas</span>
+                    <span id="roofSegmentsCountBadgeStep1-${containerId}" style="font-size: 10px; font-weight: 700; color: #059669; background: #d1fae5; padding: 2px 7px; border-radius: 99px;">Google Solar</span>
+                  </div>
+                  <span style="font-size: 11px; color: #64748b;">Selecciona las vertientes donde instalar paneles</span>
+                </div>
+                <div id="roofSegmentsStep1List-${containerId}" style="display: grid; grid-template-columns: 1fr; gap: 8px; max-height: 220px; overflow-y: auto;"></div>
+              </div>
+
+              <div class="solar-calc__map-overlay-guide" id="mapOverlayGuide-${containerId}">
                 <div>
                   <strong>🛰️ Traza tu tejado:</strong> Haz clic en 4 esquinas de tu tejado sobre la foto satélite para delimitar la superficie solar.
                 </div>
@@ -1361,44 +1430,6 @@
                     placeholder="tu@email.com"
                     required
                   >
-                </div>
-
-                <!-- Adjuntar Factura Eléctrica (Opcional con Escáner Antivirus y OCR) -->
-                <div class="solar-calc__invoice-box" style="margin-top: 6px; margin-bottom: 12px; padding: 12px 14px; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; text-align: left; transition: all 0.2s ease;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 6px;">
-                    <div style="font-size: 13px; font-weight: 700; color: #063231; display: flex; align-items: center; gap: 6px;">
-                      <span>📄</span> <span>Adjuntar factura eléctrica o foto</span>
-                      <span style="font-size: 10px; font-weight: 700; color: #059669; background: #d1fae5; padding: 2px 7px; border-radius: 99px;">OPCIONAL</span>
-                    </div>
-                    <span style="font-size: 11px; color: #64748b;">PDF o Imagen (máx. 15MB)</span>
-                  </div>
-                  <p style="font-size: 11px; color: #64748b; margin: 0 0 10px 0; line-height: 1.4;">
-                    Si adjuntas tu última factura, nuestro sistema perimetral extraerá automáticamente tu CUPS, potencias y consumos reales para afinar tu estudio al 100%. Verificado por antivirus.
-                  </p>
-                  <input 
-                    type="file" 
-                    id="invoiceFileInput-${containerId}" 
-                    accept=".pdf,image/jpeg,image/png,image/webp" 
-                    style="display: none;"
-                  >
-                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <button 
-                      type="button" 
-                      id="invoiceUploadBtn-${containerId}" 
-                      class="solar-calc__button" 
-                      style="background: #ffffff; border: 1.5px solid #063231; color: #063231; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s ease;"
-                    >
-                      <span>📎</span> <span id="invoiceBtnLabel-${containerId}">Seleccionar Factura (PDF / Foto)</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      id="invoiceRemoveBtn-${containerId}" 
-                      style="display: none; background: transparent; border: none; color: #ef4444; font-size: 11.5px; font-weight: 600; cursor: pointer; text-decoration: underline;"
-                    >
-                      ✕ Quitar archivo
-                    </button>
-                  </div>
-                  <div id="invoiceFeedback-${containerId}" style="margin-top: 8px; font-size: 11.5px; font-weight: 600; display: none;"></div>
                 </div>
                 
                 <div class="solar-calc__checkbox-container">
@@ -1745,6 +1776,11 @@
           if (locationInput) {
             locationInput.style.borderColor = '#22c55e';
             locationInput.style.backgroundColor = '#f0fdf4';
+          }
+
+          // Cargar vertientes de Google Solar en la Pantalla 1
+          if (typeof loadRoofSegmentsForCoordinates === 'function') {
+            loadRoofSegmentsForCoordinates(lat, lng);
           }
         } else {
           console.log('[EMBED] No geometry found for place:', place);
@@ -2096,8 +2132,12 @@
         locInput.style.backgroundColor = '#f0fdf4';
       }
       if (feedback) {
-        feedback.textContent = `📍 Ubicado en ${countryname}. Ahora traza tu tejado.`;
+        feedback.textContent = `📍 Ubicado en ${countryname}. Comprueba las vertientes de cubierta o traza tu tejado.`;
         feedback.style.color = '#15803d';
+      }
+
+      if (typeof loadRoofSegmentsForCoordinates === 'function') {
+        loadRoofSegmentsForCoordinates(lat, lng);
       }
 
       // Configure country params
@@ -2256,7 +2296,14 @@
       panelApplication: panelApplicationInput ? panelApplicationInput.value : 'RESIDENCIAL',
       panelType: panelTypeInput ? panelTypeInput.value : 'NORMAL',
       hasBattery: batteryToggleInput ? batteryToggleInput.checked : false,
-      selectedSegmentIndices: selectedSegmentIndices && selectedSegmentIndices.length > 0 ? selectedSegmentIndices : undefined,
+      selectedSegmentIndices: (selectedSegmentIndices && selectedSegmentIndices.length > 0)
+        ? selectedSegmentIndices
+        : (() => {
+            const segCbs = shadow.querySelectorAll(`.solar-calc__segment-checkbox-${containerId}`);
+            if (!segCbs || segCbs.length === 0) return undefined;
+            const checkedVals = Array.from(segCbs).filter(c => c.checked).map(c => parseInt(c.value, 10));
+            return checkedVals.length > 0 ? checkedVals : undefined;
+          })(),
       origin: window.location.origin,
       pathname: window.location.pathname,
       referrer: document.referrer || null
@@ -3030,64 +3077,226 @@
     showStep('step2');
   });
 
-  // Step 3: Invoice File Upload & Validation logic
+  // Step 1: Invoice File Upload & Validation logic
   let selectedInvoiceBase64 = null;
   let selectedInvoiceFileName = null;
-  const invoiceFileInput = shadow.getElementById(`invoiceFileInput-${containerId}`);
-  const invoiceUploadBtn = shadow.getElementById(`invoiceUploadBtn-${containerId}`);
-  const invoiceBtnLabel = shadow.getElementById(`invoiceBtnLabel-${containerId}`);
-  const invoiceRemoveBtn = shadow.getElementById(`invoiceRemoveBtn-${containerId}`);
-  const invoiceFeedback = shadow.getElementById(`invoiceFeedback-${containerId}`);
 
-  if (invoiceUploadBtn && invoiceFileInput) {
-    invoiceUploadBtn.addEventListener('click', () => {
-      invoiceFileInput.click();
+  const invoiceFileInputStep1 = shadow.getElementById(`invoiceFileInputStep1-${containerId}`);
+  const invoiceUploadBtnStep1 = shadow.getElementById(`invoiceUploadBtnStep1-${containerId}`);
+  const invoiceBtnLabelStep1 = shadow.getElementById(`invoiceBtnLabelStep1-${containerId}`);
+  const invoiceFeedbackStep1 = shadow.getElementById(`invoiceFeedbackStep1-${containerId}`);
+
+  function showInvoiceStep1Feedback(msg, type) {
+    if (!invoiceFeedbackStep1) return;
+    invoiceFeedbackStep1.style.display = 'block';
+    if (type === 'error') {
+      invoiceFeedbackStep1.style.color = '#ef4444';
+      invoiceFeedbackStep1.textContent = msg;
+    } else if (type === 'loading') {
+      invoiceFeedbackStep1.style.color = '#0284c7';
+      invoiceFeedbackStep1.textContent = msg;
+    } else {
+      invoiceFeedbackStep1.style.color = '#059669';
+      invoiceFeedbackStep1.textContent = msg;
+    }
+  }
+
+  // Carga y renderiza las vertientes detectadas de Google Solar en la Pantalla 1
+  async function loadRoofSegmentsForCoordinates(lat, lng) {
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+    const segmentsContainer = shadow.getElementById(`roofSegmentsStep1Container-${containerId}`);
+    const segmentsList = shadow.getElementById(`roofSegmentsStep1List-${containerId}`);
+    const countBadge = shadow.getElementById(`roofSegmentsCountBadgeStep1-${containerId}`);
+    const mapGuide = shadow.getElementById(`mapOverlayGuide-${containerId}`);
+
+    if (!segmentsContainer || !segmentsList) return;
+
+    try {
+      segmentsContainer.style.display = 'block';
+      segmentsList.innerHTML = '<div style="font-size: 11.5px; color: #0284c7; padding: 6px 0;">🛰️ Identificando vertientes y planos de tu cubierta vía Google Solar...</div>';
+
+      const res = await fetch(`/api/embed/roof-segments?lat=${lat}&lng=${lng}`);
+      const data = await res.json();
+
+      if (data.success && data.hasSolarData && data.segments && data.segments.length > 0) {
+        if (countBadge) {
+          countBadge.textContent = `${data.segments.length} detectadas`;
+        }
+
+        let html = '';
+        data.segments.forEach(seg => {
+          const isRec = seg.isRecommended !== false;
+          const badgeClass = seg.performanceGrade === 'A' ? 'background: #dcfce7; color: #15803d;' : (seg.performanceGrade === 'B' ? 'background: #fef9c3; color: #854d0e;' : 'background: #f1f5f9; color: #475569;');
+          const orientationIcon = (seg.orientationLabel || '').includes('Sur') ? '☀️' : ((seg.orientationLabel || '').includes('Este') ? '🌤️' : ((seg.orientationLabel || '').includes('Oeste') ? '🌥️' : '☁️');
+
+          html += `
+            <label class="solar-calc__segment-card-step1 ${isRec ? 'active' : ''}" style="margin: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input 
+                  type="checkbox" 
+                  class="solar-calc__segment-checkbox-${containerId}" 
+                  value="${seg.segmentIndex}" 
+                  ${isRec ? 'checked' : ''} 
+                  style="accent-color: #16a34a; width: 16px; height: 16px; cursor: pointer;"
+                >
+                <div>
+                  <div style="font-size: 12.5px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 4px;">
+                    <span>${orientationIcon}</span>
+                    <span>Vertiente ${seg.orientationLabel || 'Principal'}</span>
+                    <span style="font-size: 9.5px; font-weight: 800; padding: 1px 6px; border-radius: 99px; ${badgeClass}">
+                      Grado ${seg.performanceGrade} (${seg.efficiencyPercentage}%)
+                    </span>
+                  </div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 1px;">
+                    Inclinación ${seg.pitchDegrees}° · ~${seg.areaMeters2} m² útiles · hasta ${seg.panelsCount} paneles
+                  </div>
+                </div>
+              </div>
+            </label>
+          `;
+        });
+
+        segmentsList.innerHTML = html;
+
+        // Listener en checkboxes para actualizar aspecto activo
+        segmentsList.querySelectorAll(`.solar-calc__segment-checkbox-${containerId}`).forEach(cb => {
+          cb.addEventListener('change', (e) => {
+            const card = e.target.closest('.solar-calc__segment-card-step1');
+            if (card) {
+              if (e.target.checked) card.classList.add('active');
+              else card.classList.remove('active');
+            }
+          });
+        });
+
+        // Si Google Solar tiene detección 3D precisa, relajar la obligatoriedad de trazar 4 esquinas
+        if (mapGuide) {
+          mapGuide.style.display = 'none';
+        }
+      } else {
+        // Si no hay datos 3D de Google Solar, ocultar el contenedor y dejar el trazado manual
+        segmentsContainer.style.display = 'none';
+        if (mapGuide) {
+          mapGuide.style.display = 'flex';
+        }
+      }
+    } catch (err) {
+      console.warn('[ROOF-SEGMENTS CLIENT ERROR]', err);
+      segmentsContainer.style.display = 'none';
+    }
+  }
+
+  if (invoiceUploadBtnStep1 && invoiceFileInputStep1) {
+    invoiceUploadBtnStep1.addEventListener('click', () => {
+      invoiceFileInputStep1.click();
     });
 
-    invoiceFileInput.addEventListener('change', () => {
-      const file = invoiceFileInput.files && invoiceFileInput.files[0];
+    invoiceFileInputStep1.addEventListener('change', async () => {
+      const file = invoiceFileInputStep1.files && invoiceFileInputStep1.files[0];
       if (!file) return;
 
-      // Validar tamaño máximo: 15MB
+      // 1. Tamaño máximo: 15MB
       if (file.size > 15 * 1024 * 1024) {
-        if (invoiceFeedback) {
-          invoiceFeedback.style.display = 'block';
-          invoiceFeedback.style.color = '#ef4444';
-          invoiceFeedback.textContent = '⚠️ El archivo supera el tamaño máximo permitido de 15 MB.';
-        }
-        invoiceFileInput.value = '';
-        selectedInvoiceBase64 = null;
-        selectedInvoiceFileName = null;
+        showInvoiceStep1Feedback('⚠️ El archivo supera el tamaño máximo permitido de 15 MB.', 'error');
+        invoiceFileInputStep1.value = '';
         return;
       }
 
+      // 2. Pre-filtro silencioso de Magic Bytes en cliente
+      try {
+        const sliceBuffer = await file.slice(0, 8).arrayBuffer();
+        const bytes = new Uint8Array(sliceBuffer);
+
+        const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46; // %PDF-
+        const isJpg = bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;                         // JPEG
+        const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47; // PNG
+        const isWebp = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46; // RIFF
+
+        if (!isPdf && !isJpg && !isPng && !isWebp) {
+          showInvoiceStep1Feedback('Por favor, selecciona un documento PDF o imagen válido de tu factura.', 'error');
+          invoiceFileInputStep1.value = '';
+          return;
+        }
+      } catch (e) {
+        console.warn('No se pudo verificar magic bytes en cliente, continuando con validación de servidor');
+      }
+
+      showInvoiceStep1Feedback('⏳ Analizando factura y localizando tu suministro...', 'loading');
+      if (invoiceBtnLabelStep1) invoiceBtnLabelStep1.textContent = 'Procesando...';
+
       const reader = new FileReader();
-      reader.onload = (re) => {
+      reader.onload = async (re) => {
         selectedInvoiceBase64 = re.target.result;
         selectedInvoiceFileName = file.name;
-        if (invoiceBtnLabel) invoiceBtnLabel.textContent = 'Cambiar archivo';
-        if (invoiceRemoveBtn) invoiceRemoveBtn.style.display = 'inline-block';
-        if (invoiceFeedback) {
-          invoiceFeedback.style.display = 'block';
-          invoiceFeedback.style.color = '#059669';
-          invoiceFeedback.textContent = `✅ Factura seleccionada: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+
+        try {
+          const res = await fetch('/api/embed/parse-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileBase64: selectedInvoiceBase64,
+              fileName: file.name
+            })
+          });
+
+          const parseData = await res.json();
+
+          if (invoiceBtnLabelStep1) invoiceBtnLabelStep1.textContent = 'Cambiar Factura';
+
+          if (parseData.success && parseData.extracted) {
+            const ext = parseData.extracted;
+
+            // 1. Extraer y geolocalizar dirección
+            if (ext.address) {
+              const locInput = shadow.getElementById(`location-${containerId}`);
+              const latInput = shadow.getElementById(`latitude-${containerId}`);
+              const lngInput = shadow.getElementById(`longitude-${containerId}`);
+
+              if (locInput) {
+                locInput.value = ext.address;
+                locInput.style.borderColor = '#22c55e';
+                locInput.style.backgroundColor = '#f0fdf4';
+              }
+
+              if (window.google && window.google.maps) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: ext.address }, (results, status) => {
+                  if (status === 'OK' && results[0] && map) {
+                    const geom = results[0].geometry.location;
+                    map.setCenter(geom);
+                    map.setZoom(19);
+                    if (latInput) latInput.value = geom.lat();
+                    if (lngInput) lngInput.value = geom.lng();
+                    loadRoofSegmentsForCoordinates(geom.lat(), geom.lng());
+                  }
+                });
+              }
+            }
+
+            // 2. Extraer consumo eléctrico
+            if (ext.consumptionKwh) {
+              updateConsumptionValue(Math.round(ext.consumptionKwh));
+            }
+
+            // 3. Extraer nombre de titular si existe
+            if (ext.userName) {
+              const nameInput = shadow.getElementById(`name-${containerId}`);
+              if (nameInput) nameInput.value = ext.userName;
+            }
+
+            showInvoiceStep1Feedback(`✅ Factura analizada: datos extraídos y ubicados en el mapa (${file.name})`, 'success');
+          } else {
+            showInvoiceStep1Feedback(`✅ Factura adjuntada con éxito: ${file.name}. Confirma o ajusta tu dirección a continuación.`, 'success');
+          }
+        } catch (err) {
+          console.warn('[PARSE INVOICE CLIENT ERROR]', err);
+          if (invoiceBtnLabelStep1) invoiceBtnLabelStep1.textContent = 'Cambiar Factura';
+          showInvoiceStep1Feedback(`✅ Factura guardada: ${file.name}. Continúa seleccionando tu dirección.`, 'success');
         }
       };
       reader.readAsDataURL(file);
     });
-
-    if (invoiceRemoveBtn) {
-      invoiceRemoveBtn.addEventListener('click', () => {
-        selectedInvoiceBase64 = null;
-        selectedInvoiceFileName = null;
-        invoiceFileInput.value = '';
-        if (invoiceBtnLabel) invoiceBtnLabel.textContent = 'Seleccionar Factura (PDF / Foto)';
-        invoiceRemoveBtn.style.display = 'none';
-        if (invoiceFeedback) {
-          invoiceFeedback.style.display = 'none';
-        }
-      });
-    }
   }
 
   // Currency change handler - update placeholder based on selected currency
