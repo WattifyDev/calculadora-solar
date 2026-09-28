@@ -3116,7 +3116,11 @@
       segmentsContainer.style.display = 'block';
       segmentsList.innerHTML = '<div style="font-size: 11.5px; color: #0284c7; padding: 6px 0;">🛰️ Identificando vertientes y planos de tu cubierta vía Google Solar...</div>';
 
-      const res = await fetch(`/api/embed/roof-segments?lat=${lat}&lng=${lng}`);
+      const res = await fetch(`${apiOrigin}/api/embed/roof-segments?lat=${lat}&lng=${lng}`, {
+        headers: {
+          'X-API-Key': backendApiKey
+        }
+      });
       const data = await res.json();
 
       if (data.success && data.hasSolarData && data.segments && data.segments.length > 0) {
@@ -3235,9 +3239,12 @@
         selectedInvoiceFileName = file.name;
 
         try {
-          const res = await fetch('/api/embed/parse-invoice', {
+          const res = await fetch(`${apiOrigin}/api/embed/parse-invoice`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': backendApiKey
+            },
             body: JSON.stringify({
               fileBase64: selectedInvoiceBase64,
               fileName: file.name
@@ -3251,45 +3258,54 @@
           if (parseData.success && parseData.extracted) {
             const ext = parseData.extracted;
 
-            // 1. Extraer y geolocalizar dirección
-            if (ext.address) {
-              const locInput = shadow.getElementById(`location-${containerId}`);
-              const latInput = shadow.getElementById(`latitude-${containerId}`);
-              const lngInput = shadow.getElementById(`longitude-${containerId}`);
+            const locInput = shadow.getElementById(`location-${containerId}`);
+            const latInput = shadow.getElementById(`latitude-${containerId}`);
+            const lngInput = shadow.getElementById(`longitude-${containerId}`);
 
+            // 1. Extraer dirección
+            if (ext.address) {
               if (locInput) {
                 locInput.value = ext.address;
                 locInput.style.borderColor = '#22c55e';
                 locInput.style.backgroundColor = '#f0fdf4';
               }
-
-              if (window.google && window.google.maps) {
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ address: ext.address }, (results, status) => {
-                  if (status === 'OK' && results[0] && map) {
-                    const geom = results[0].geometry.location;
-                    map.setCenter(geom);
-                    map.setZoom(19);
-                    if (latInput) latInput.value = geom.lat();
-                    if (lngInput) lngInput.value = geom.lng();
-                    loadRoofSegmentsForCoordinates(geom.lat(), geom.lng());
-                  }
-                });
-              }
             }
 
-            // 2. Extraer consumo eléctrico
+            // 2. Centrar mapa y cargar vertientes de tejado
+            if (ext.lat && ext.lng && map) {
+              const latNum = parseFloat(ext.lat);
+              const lngNum = parseFloat(ext.lng);
+              map.setCenter({ lat: latNum, lng: lngNum });
+              map.setZoom(19);
+              if (latInput) latInput.value = latNum;
+              if (lngInput) lngInput.value = lngNum;
+              loadRoofSegmentsForCoordinates(latNum, lngNum);
+            } else if (ext.address && window.google && window.google.maps) {
+              const geocoder = new google.maps.Geocoder();
+              geocoder.geocode({ address: ext.address }, (results, status) => {
+                if (status === 'OK' && results[0] && map) {
+                  const geom = results[0].geometry.location;
+                  map.setCenter(geom);
+                  map.setZoom(19);
+                  if (latInput) latInput.value = geom.lat();
+                  if (lngInput) lngInput.value = geom.lng();
+                  loadRoofSegmentsForCoordinates(geom.lat(), geom.lng());
+                }
+              });
+            }
+
+            // 3. Extraer consumo eléctrico
             if (ext.consumptionKwh) {
               updateConsumptionValue(Math.round(ext.consumptionKwh));
             }
 
-            // 3. Extraer nombre de titular si existe
+            // 4. Extraer nombre de titular si existe
             if (ext.userName) {
               const nameInput = shadow.getElementById(`name-${containerId}`);
               if (nameInput) nameInput.value = ext.userName;
             }
 
-            showInvoiceStep1Feedback(`✅ Factura analizada: datos extraídos y ubicados en el mapa (${file.name})`, 'success');
+            showInvoiceStep1Feedback(`✅ Factura analizada: tejado localizado y vertientes detectadas (${file.name})`, 'success');
           } else {
             showInvoiceStep1Feedback(`✅ Factura adjuntada con éxito: ${file.name}. Confirma o ajusta tu dirección a continuación.`, 'success');
           }
