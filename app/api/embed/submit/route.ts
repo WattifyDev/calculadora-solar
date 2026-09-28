@@ -1581,7 +1581,39 @@ export async function POST(request: Request) {
                         orthophotoBase64: orthophotoBase64,
                     } as any,
                 });
+
+                // --- Contact Hub: UPSERT del Contact y linkeo con la Submission ---
+                try {
+                    const contact = await prisma.contact.upsert({
+                        where: { email: data.email.toLowerCase().trim() },
+                        update: {
+                            phone: data.phone || undefined,
+                            firstName: (data.name || '').trim() || undefined,
+                            lastName: (data.surnames || '').trim() || undefined,
+                            updatedAt: new Date(),
+                        },
+                        create: {
+                            email: data.email.toLowerCase().trim(),
+                            phone: data.phone || null,
+                            firstName: (data.name || '').trim() || null,
+                            lastName: (data.surnames || '').trim() || null,
+                            source: 'CALCULADORA',
+                        },
+                    });
+                    // Linkear la Submission recién creada al Contact
+                    await prisma.submission.update({
+                        where: { id: newSubmission.id },
+                        data: { contactId: contact.id },
+                    });
+                    console.log(`[CONTACT HUB] Contact upserted: ${contact.id} (${contact.email}) → Submission ${newSubmission.id}`);
+                } catch (contactError: any) {
+                    // No bloqueante: si falla el Contact Hub, la Submission ya está guardada
+                    console.error('[CONTACT HUB] Error upserting contact (non-blocking):', contactError?.message);
+                }
+                // --- End Contact Hub ---
+
                 // Send email if user has SMTP configuration
+
                 let emailUser = null;
                 if (domainUser) {
                     // Use domain-matched user if found

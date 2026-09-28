@@ -46,6 +46,46 @@ model Material {
   type             MaterialType      @default(OTHER)
 }
 
+model Contact {
+  id          String        @id @default(cuid())
+  email       String        @unique
+  phone       String?
+  firstName   String?
+  lastName    String?
+  source      ContactSource @default(CALCULADORA)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  submissions Submission[]
+  meetings    Meeting[]
+  formEntries FormEntry[]
+}
+
+model Meeting {
+  id           String        @id @default(cuid())
+  contactId    String
+  contact      Contact       @relation(fields: [contactId], references: [id])
+  calEventUid  String?       @unique
+  scheduledAt  DateTime?
+  engineerName String?
+  status       MeetingStatus @default(SCHEDULED)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model FormEntry {
+  id         String   @id @default(cuid())
+  contactId  String
+  contact    Contact  @relation(fields: [contactId], references: [id])
+  formId     String?
+  formName   String?
+  score      Int?
+  answers    Json?
+  source     String?  @default("formbricks")
+  createdAt  DateTime @default(now())
+}
+
 model Submission {
   id                           String            @id @default(cuid())
   address                      String
@@ -63,6 +103,8 @@ model Submission {
   userConsentGiven             Boolean?
   origin                       String?
   pathname                     String?
+  contactId                    String?
+  contact                      Contact?          @relation(fields: [contactId], references: [id])
   googleSolarData              Json?
   annualProduction             Float?
   dailyAverage                 Float?
@@ -110,6 +152,21 @@ model SystemSetting {
 enum Role {
   ADMIN
   USER
+}
+
+enum ContactSource {
+  CALCULADORA
+  FORMBRICKS
+  CALCOM
+  CHATWOOT
+  MANUAL
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
 }
 
 enum MaterialType {
