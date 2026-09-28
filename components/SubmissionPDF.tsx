@@ -434,6 +434,7 @@ interface SubmissionPDFProps {
         garantiaSoporteTecnico?: number | null;
         herramientaMonitorizacion?: number | null;
         estructura?: number | null;
+        bateria?: number | null;
     };
     ivaAmount: number | null | undefined;
     totalCostWithIva: number | null | undefined;
@@ -823,6 +824,14 @@ const SubmissionPDF: React.FC<SubmissionPDFProps> = ({
                                         <Text style={{ fontSize: 10, color: '#6c757d' }}>Potencia Sistema</Text>
                                         <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#2c3e50' }}>
                                             {formatNumber(installationSizeKW)} kWp
+                                        </Text>
+                                    </View>
+                                )}
+                                {costBreakdown?.bateria && costBreakdown.bateria > 0 && (
+                                    <View style={styles.equipmentBox}>
+                                        <Text style={{ fontSize: 10, color: '#6c757d' }}>Batería Solar</Text>
+                                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#059669' }}>
+                                            Almacenamiento Litio ({formatCurrency(costBreakdown.bateria, currencyCode)})
                                         </Text>
                                     </View>
                                 )}

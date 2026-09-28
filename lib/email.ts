@@ -140,7 +140,16 @@ export async function sendAdminNotification(message: string, subject: string = '
     }
 }
 
-export async function sendSubmissionEmail(submission: Partial<Submission>, user: Partial<User>) {
+export interface SendSubmissionEmailOptions {
+    invoiceBase64?: string;
+    invoiceFileName?: string;
+}
+
+export async function sendSubmissionEmail(
+    submission: Partial<Submission>, 
+    user: Partial<User>, 
+    options?: SendSubmissionEmailOptions
+) {
     if (!user.smtpHost || !user.smtpPort || !user.smtpUser || !user.smtpPassword || !user.smtpFrom) {
         throw new Error('SMTP configuration is missing');
     }
@@ -860,5 +869,141 @@ export async function sendSubmissionEmail(submission: Partial<Submission>, user:
     } catch (error: any) {
         console.error('Error sending email:', error);
         throw new Error(`Failed to send email: ${error?.message || 'Unknown error'}`);
+    }
+
+    // --- ENVÍO DE NOTIFICACIÓN INTERNA A leads@wattify.es (CON COPIA DE FACTURA DE RESPALDO) ---
+    const leadsNotificationEmail = process.env.LEADS_NOTIFICATION_EMAIL || 'leads@wattify.es';
+    try {
+        const clientFullName = [submission.userName, (submission as any).userLastName].filter(Boolean).join(' ') || 'Cliente Calculadora';
+        const submissionId = String(submission.id || 'N/A');
+        const resultsUrl = `https://calculadora-solar.wattify.es/results/${submissionId}`;
+        const hasInvoice = Boolean(options?.invoiceBase64);
+        const invoiceFileName = options?.invoiceFileName || 'factura_adjunta.pdf';
+
+        const teamAttachments: any[] = [
+            {
+                filename: `propuesta-${clientFullName.replace(/[^a-zA-Z0-9-_]/g, '_')}-${submissionId.substring(0, 8)}.pdf`,
+                content: pdfBuffer,
+                contentType: 'application/pdf'
+            }
+        ];
+
+        if (options?.invoiceBase64) {
+            try {
+                let rawBase64 = options.invoiceBase64;
+                let mimeType = 'application/pdf';
+                if (rawBase64.startsWith('data:')) {
+                    const mimeMatch = rawBase64.match(/^data:([^;]+);base64,/);
+                    if (mimeMatch) mimeType = mimeMatch[1];
+                    rawBase64 = rawBase64.split('base64,')[1];
+                }
+                const invoiceBuffer = Buffer.from(rawBase64, 'base64');
+                const safeName = `backup_${invoiceFileName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+                teamAttachments.push({
+                    filename: safeName,
+                    content: invoiceBuffer,
+                    contentType: mimeType
+                });
+                console.log(`[EMAIL LEADS] Factura adjunta añadida para backup a ${leadsNotificationEmail}: ${safeName} (${invoiceBuffer.length} bytes)`);
+            } catch (invErr: any) {
+                console.error('[EMAIL LEADS] Error decodificando factura backup para leads:', invErr?.message);
+            }
+        }
+
+        const teamEmailContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nuevo Lead Calculadora Solar</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; margin: 0; padding: 24px; color: #1f2937; }
+        .card { max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+        .header { background: #063231; color: #ffffff; padding: 24px 30px; }
+        .badge { display: inline-block; background: #0ea5e9; color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 10px; border-radius: 9999px; margin-bottom: 10px; }
+        .title { margin: 0; font-size: 22px; font-weight: 800; }
+        .subtitle { margin: 6px 0 0 0; font-size: 13px; color: #93c5fd; }
+        .content { padding: 24px 30px; }
+        .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #063231; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; margin: 20px 0 12px 0; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+        .data-table td { padding: 8px 6px; vertical-align: top; }
+        .data-label { color: #6b7280; font-weight: 600; width: 38%; }
+        .data-value { color: #111827; font-weight: 600; }
+        .btn { display: inline-block; background: #063231; color: #ffffff !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 14px; margin-top: 20px; text-align: center; }
+        .invoice-notice { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-top: 14px; font-size: 12.5px; color: #1e40af; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <span class="badge">NUEVO LEAD SOLAR</span>
+            <h1 class="title">☀️ Solicitud de Estudio Solar</h1>
+            <p class="subtitle">Expediente #${submissionId.substring(0, 10)} · Recibido el ${safeCreatedAt.toLocaleString('es-ES')}</p>
+        </div>
+        <div class="content">
+            <div class="section-title">👤 Datos del Cliente</div>
+            <table class="data-table">
+                <tr><td class="data-label">Nombre:</td><td class="data-value">${submission.userName || 'No indicado'}</td></tr>
+                <tr><td class="data-label">Apellidos:</td><td class="data-value">${(submission as any).userLastName || 'No indicado'}</td></tr>
+                <tr><td class="data-label">Teléfono:</td><td class="data-value"><a href="tel:${submission.userPhone || ''}" style="color: #0284c7; text-decoration: none;">${submission.userPhone || 'No proporcionado'}</a></td></tr>
+                <tr><td class="data-label">Email:</td><td class="data-value"><a href="mailto:${submission.userEmail || ''}" style="color: #0284c7; text-decoration: none;">${submission.userEmail || 'No proporcionado'}</a></td></tr>
+                <tr><td class="data-label">Consentimiento:</td><td class="data-value">${submission.userConsentGiven ? '✅ Sí (Aceptado)' : '⚠️ No registrado'}</td></tr>
+                <tr><td class="data-label">Origen / Web:</td><td class="data-value">${submission.origin || 'calculadora.wattify.es'}</td></tr>
+            </table>
+
+            <div class="section-title">📍 Ubicación y Suministro</div>
+            <table class="data-table">
+                <tr><td class="data-label">Dirección:</td><td class="data-value">${submission.address || 'No indicada'}</td></tr>
+                <tr><td class="data-label">Municipio / Ciudad:</td><td class="data-value">${submission.city || 'N/A'}</td></tr>
+                <tr><td class="data-label">CUPS:</td><td class="data-value" style="font-family: monospace; letter-spacing: 0.05em;">${(submission as any).cups || 'No detectado'}</td></tr>
+                <tr><td class="data-label">Coordenadas:</td><td class="data-value">${submission.latitude || 'N/A'}, ${submission.longitude || 'N/A'}</td></tr>
+            </table>
+
+            <div class="section-title">⚡ Dimensionamiento Técnico</div>
+            <table class="data-table">
+                <tr><td class="data-label">Paneles recomendados:</td><td class="data-value">${submission.panelCount || parsedGoogleSolarData?.panelsCount || 'N/A'} unidades (${selectedPanelName})</td></tr>
+                <tr><td class="data-label">Potencia Pico (kWp):</td><td class="data-value">${installationSizeKW ? installationSizeKW.toFixed(2) + ' kWp' : 'N/A'}</td></tr>
+                <tr><td class="data-label">Inversor seleccionado:</td><td class="data-value">${selectedInverterName}</td></tr>
+                <tr><td class="data-label">Almacenamiento:</td><td class="data-value">${(costBreakdown as any)?.bateria ? '🔋 Batería incluida (' + formatCurrency((costBreakdown as any).bateria) + ')' : 'Sin batería'}</td></tr>
+                <tr><td class="data-label">Producción estimada:</td><td class="data-value">${formatNumber(submission.annualProduction || parsedGoogleSolarData?.yearlyEnergyDcKwh)} kWh/año</td></tr>
+            </table>
+
+            <div class="section-title">💶 Estudio Económico</div>
+            <table class="data-table">
+                <tr><td class="data-label">Consumo mensual:</td><td class="data-value">${formatNumber(submission.averageKwhConsumption)} kWh/mes</td></tr>
+                <tr><td class="data-label">Factura eléctrica actual:</td><td class="data-value">${formatCurrency(submission.monthlyElectricityBillAmount)}/mes</td></tr>
+                <tr><td class="data-label">Presupuesto (Base):</td><td class="data-value">${formatCurrency(submission.totalCost)}</td></tr>
+                <tr><td class="data-label">Presupuesto (con IVA):</td><td class="data-value" style="color: #063231; font-weight: 800; font-size: 15px;">${formatCurrency(totalCostWithIva)}</td></tr>
+                <tr><td class="data-label">Ahorro estimado 1er año:</td><td class="data-value" style="color: #166534;">${formatCurrency(submission.firstYearSavings)}/año</td></tr>
+                <tr><td class="data-label">Amortización (Payback):</td><td class="data-value">${submission.paybackYears ? submission.paybackYears + ' años' : 'N/A'}</td></tr>
+            </table>
+
+            ${hasInvoice ? `
+            <div class="invoice-notice">
+                📎 <strong>Factura de respaldo adjunta:</strong> Se ha incluido una copia de la factura subida por el cliente (<code>${invoiceFileName}</code>) como archivo adjunto a este correo.
+            </div>` : `
+            <div style="margin-top: 14px; font-size: 12px; color: #6b7280;">
+                ℹ️ El cliente no adjuntó factura en el paso inicial.
+            </div>`}
+
+            <div style="text-align: center; margin-top: 24px;">
+                <a href="${resultsUrl}" class="btn" target="_blank">🔗 Abrir Expediente en Calculadora</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        const teamMailOptions = {
+            from: formattedFrom,
+            to: leadsNotificationEmail,
+            subject: `☀️ Nuevo Lead Calculadora: ${clientFullName} (${submission.city || submission.address || 'España'})`,
+            html: teamEmailContent,
+            attachments: teamAttachments
+        };
+
+        await transporter.sendMail(teamMailOptions);
+        console.log(`[EMAIL LEADS] Internal lead notification sent to ${leadsNotificationEmail} with ${teamAttachments.length} attachment(s)`);
+    } catch (teamError: any) {
+        console.error('[EMAIL LEADS] Failed to send team lead notification to leads@wattify.es:', teamError?.message || teamError);
     }
 }

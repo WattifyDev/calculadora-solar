@@ -1604,7 +1604,10 @@ export async function POST(request: Request) {
                     senderEmail = 'Informe Solar';
                     // NO AWAIT: Fire and forget to not block the response
                     // PDF generation is heavy, we don't want the user waiting for it
-                    sendSubmissionEmail(newSubmission, emailUser).catch(emailError => {
+                    sendSubmissionEmail(newSubmission, emailUser, {
+                        invoiceBase64: data.invoiceBase64,
+                        invoiceFileName: data.invoiceFileName
+                    }).catch(emailError => {
                         console.error('Background email task failed:', emailError);
                     });
                     console.log('Email task triggered in background using:', domainUser ? 'domain user' : 'admin fallback');
@@ -1810,7 +1813,10 @@ export async function POST(request: Request) {
             if (emailUser && emailUser.smtpHost) {
                 senderEmail = 'Informe Solar';
                 // NO AWAIT: Fire and forget
-                sendSubmissionEmail(newSubmission, emailUser).catch(emailError => {
+                sendSubmissionEmail(newSubmission, emailUser, {
+                    invoiceBase64: data.invoiceBase64,
+                    invoiceFileName: data.invoiceFileName
+                }).catch(emailError => {
                     console.error('Background email task failed:', emailError);
                 });
                 console.log('Email task triggered in background using:', domainUser ? 'domain user' : 'admin/env fallback');
@@ -1880,7 +1886,10 @@ export async function POST(request: Request) {
                     };
 
                     senderEmail = 'Informe Solar';
-                    sendSubmissionEmail(mockSubmission, fallbackEmailUser).catch(emailError => {
+                    sendSubmissionEmail(mockSubmission, fallbackEmailUser, {
+                        invoiceBase64: data.invoiceBase64,
+                        invoiceFileName: data.invoiceFileName
+                    }).catch(emailError => {
                         console.error('[SUBMIT-LOCAL] Email sending failed with env SMTP:', emailError);
                     });
                     console.log('[SUBMIT-LOCAL] Email triggered using .env SMTP configuration');
