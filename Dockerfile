@@ -4,7 +4,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-COPY node_modules ./node_modules
+RUN npm ci || npm install
 
 # 2. Etapa de construcción
 FROM node:20-alpine AS builder
