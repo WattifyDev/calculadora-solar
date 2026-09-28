@@ -3536,7 +3536,7 @@
 
           modalConfirmMsg.innerHTML = `
             <!-- 1. Tarjeta Cal.com: Diseño idéntico a resultados -->
-            <div style="position: relative; overflow: hidden; width: 100%; padding: 24px 22px; background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #022c22 100%); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 18px; text-align: left; color: #ffffff; box-shadow: 0 16px 36px -8px rgba(2, 44, 34, 0.45); box-sizing: border-box; margin-bottom: 24px;">
+            <div style="position: relative; overflow: hidden; width: 100%; padding: 24px 22px; background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #022c22 100%); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 18px; text-align: left; color: #ffffff; box-shadow: 0 16px 36px -8px rgba(2, 44, 34, 0.45); box-sizing: border-box; margin-bottom: 22px;">
               <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: #CBFF54; color: #063231; font-size: 11px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px;">
                 <span>⚡</span> Paso Siguiente Recomendado
               </div>
@@ -3551,13 +3551,13 @@
               </button>
             </div>
 
-            <!-- 2. Aviso de PDF y SPAM: Separado con caja sutil y espaciada -->
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; text-align: center; margin-bottom: 24px; box-sizing: border-box;">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px; font-weight: 700; font-size: 12.5px; color: #1e293b;">
+            <!-- 2. Aviso de PDF y SPAM: Sin caja, colocado a la mitad con espaciado equilibrado -->
+            <div style="margin: 0 auto 22px auto; max-width: 450px; text-align: center; line-height: 1.55; padding: 0 10px;">
+              <div style="font-size: 12.5px; color: #334155; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                 <span>✉️</span>
                 <span>En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.</span>
               </div>
-              <div style="font-size: 11.5px; color: #64748b; line-height: 1.5;">
+              <div style="font-size: 11.5px; color: #64748b;">
                 Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).
               </div>
             </div>
