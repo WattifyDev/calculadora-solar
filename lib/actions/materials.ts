@@ -12,6 +12,7 @@ export async function getMaterials(): Promise<Material[]> {
         })
         return materials.map(m => ({
             ...m,
+            price: m.price ?? 0,
             createdAt: m.createdAt.toISOString(),
             updatedAt: m.updatedAt.toISOString(),
             panelType: m.panelType as PanelType | null,

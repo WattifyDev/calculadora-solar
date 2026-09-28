@@ -94,9 +94,10 @@ export interface Material {
   panelType: PanelType | null
   panelApplication: PanelApplication | null
   /**
-   * Potencia pico: para PANEL (en W) y para INVERSOR (en kW)
+   * Potencia pico: para PANEL (en W), para INVERSOR (en kW), para BATERIA (capacidad en kWh)
    */
   peakPower: number | null
+  price: number | null
   hasBattery: boolean | null
   area: number
   image: string | null
@@ -111,9 +112,10 @@ export interface MaterialFormData {
   panelType: PanelType | null
   panelApplication: PanelApplication | null
   /**
-   * Potencia pico: para PANEL (en W) y para INVERSOR (en kW)
+   * Potencia pico: para PANEL (en W), para INVERSOR (en kW), para BATERIA (capacidad en kWh)
    */
   peakPower: number | null
+  price?: number | null
   hasBattery: boolean | null
   area: number
   image: string | null
@@ -154,6 +156,11 @@ export interface GoogleSolarData {
   averageKwhConsumption?: number | null;
   installationSizeKW?: number | null;
   orthophotoUrl?: string | null;
+  hasBattery?: boolean;
+  batteryCapacityKWh?: number | null;
+  batteryCost?: number | null;
+  batteryTypeDescription?: string | null;
+  batteryUnitCount?: number | null;
   roofSegments?: RoofSegmentDetails[];
   solarPanels?: import('./google-solar-types').SolarPanel[];
   panelHeightMeters?: number | null;
@@ -169,6 +176,7 @@ export interface ExpectedPvgisData {
 export enum MaterialType {
   PANEL = 'PANEL',
   INVERSOR = 'INVERSOR',
+  BATERIA = 'BATERIA',
   OTHER = 'OTHER',
 }
 

@@ -53,7 +53,8 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
           type: editForm.type,
           panelType: editForm.type === MaterialType.PANEL ? editForm.panelType : null,
           panelApplication: editForm.type === MaterialType.PANEL ? editForm.panelApplication : null,
-          peakPower: editForm.type === MaterialType.INVERSOR ? editForm.peakPower : null,
+          peakPower: (editForm.type === MaterialType.INVERSOR || editForm.type === MaterialType.PANEL || editForm.type === MaterialType.BATERIA) ? editForm.peakPower : null,
+          price: editForm.price ?? 0,
           image: editForm.image,
           datasheetPdf: editForm.datasheetPdf,
         };
@@ -86,7 +87,7 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
       if (!isAdmin) return;
 
       let processedValue = value;
-      if (field === 'area') {
+      if (field === 'area' || field === 'price') {
         processedValue = parseFloat(value) || 0;
       }
 
@@ -97,7 +98,7 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
           newEditForm.panelType = null;
           newEditForm.panelApplication = null;
         }
-        if (value !== MaterialType.INVERSOR) {
+        if (value !== MaterialType.INVERSOR && value !== MaterialType.PANEL && value !== MaterialType.BATERIA) {
           newEditForm.peakPower = null;
         }
       }
@@ -142,13 +143,14 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
             <TableHead className="text-muted-foreground font-semibold">Especificaciones</TableHead>
             <TableHead className="text-muted-foreground font-semibold">Aplicación</TableHead>
             <TableHead className="text-muted-foreground font-semibold">Área (m²)</TableHead>
+            <TableHead className="text-muted-foreground font-semibold">Precio (€)</TableHead>
             <TableHead className="text-right text-muted-foreground font-semibold">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {materials.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+              <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                 No se encontraron materiales.
               </TableCell>
             </TableRow>
@@ -205,9 +207,26 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
                         <SelectContent>
                           <SelectItem value={MaterialType.PANEL}>Panel</SelectItem>
                           <SelectItem value={MaterialType.INVERSOR}>Inversor</SelectItem>
+                          <SelectItem value={MaterialType.BATERIA}>🔋 Batería</SelectItem>
                           <SelectItem value={MaterialType.OTHER}>Otro</SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {editForm?.type === MaterialType.BATERIA && (
+                        <div className="space-y-1">
+                          <Input
+                            type="number"
+                            value={editForm?.peakPower ?? ''}
+                            onChange={(e) => handleEditChange("peakPower", e.target.value)}
+                            placeholder="Capacidad (kWh)"
+                            className="bg-background/50 h-9 text-xs"
+                            min={0.5}
+                            step={0.5}
+                            aria-describedby="peakPowerBattery-help"
+                          />
+                          <span id="peakPowerBattery-help" className="text-xs text-muted-foreground">Capacidad útil de almacenamiento (kWh).</span>
+                        </div>
+                      )}
 
                       {editForm?.type === MaterialType.PANEL && (
                         <>
@@ -266,7 +285,9 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
                       <div className="font-medium text-sm">
                         {material.type === MaterialType.PANEL ? `Panel${material.peakPower ? ` ${material.peakPower}W` : ''}` :
                           material.type === MaterialType.INVERSOR ?
-                            `Inversor${material.peakPower ? ` ${material.peakPower}kW` : ''}` : 'Otro'}
+                            `Inversor${material.peakPower ? ` ${material.peakPower}kW` : ''}` :
+                          material.type === MaterialType.BATERIA ?
+                            `🔋 Batería${material.peakPower ? ` ${material.peakPower} kWh` : ''}` : 'Otro'}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {material.type === MaterialType.PANEL && material.panelType && (
@@ -280,6 +301,9 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
                               <><XIcon className="text-destructive w-3 h-3" /> Sin batería</>
                             )}
                           </div>
+                        )}
+                        {material.type === MaterialType.BATERIA && (
+                          <span className="text-emerald-600 font-medium">Almacenamiento LiFePO4</span>
                         )}
                       </div>
                     </div>
@@ -329,6 +353,23 @@ export default function MaterialsTable({ initialMaterials, userRole }: Materials
                     />
                   ) : (
                     <span className="font-mono text-foreground">{material.area} m²</span>
+                  )}
+                </TableCell>
+
+                {/* Price Column */}
+                <TableCell>
+                  {editingId === material.id && isAdmin ? (
+                    <Input
+                      type="number"
+                      value={editForm?.price ?? ''}
+                      onChange={(e) => handleEditChange("price", e.target.value)}
+                      placeholder="0 €"
+                      className="bg-background/50 h-9 text-xs font-mono"
+                    />
+                  ) : (
+                    <span className="font-mono text-sm font-semibold text-foreground">
+                      {material.price && material.price > 0 ? `${material.price.toLocaleString('es-ES')} €` : '-'}
+                    </span>
                   )}
                 </TableCell>
 

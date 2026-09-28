@@ -727,6 +727,61 @@
       transform: translateX(22px) !important;
     }
 
+    /* Battery Capacity Chips */
+    #${containerId} .solar-calc__battery-chips {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 8px !important;
+      margin-top: 8px !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip {
+      background: #ffffff !important;
+      border: 1.5px solid #cbd5e1 !important;
+      border-radius: 10px !important;
+      padding: 8px 4px !important;
+      cursor: pointer !important;
+      text-align: center !important;
+      transition: all 0.2s ease !important;
+      font-family: inherit !important;
+      color: #334155 !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip:hover {
+      border-color: #94a3b8 !important;
+      background: #f8fafc !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip.active {
+      border-color: #16a34a !important;
+      background: #ffffff !important;
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25) !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip-title {
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      display: block !important;
+      color: #0f172a !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip.active .solar-calc__battery-chip-title {
+      color: #15803d !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip-sub {
+      font-size: 10px !important;
+      display: block !important;
+      color: #64748b !important;
+      margin-top: 2px !important;
+      line-height: 1.2 !important;
+    }
+
+    #${containerId} .solar-calc__battery-chip.active .solar-calc__battery-chip-sub {
+      color: #166534 !important;
+      font-weight: 600 !important;
+    }
+
     /* Premium Satellite Scanner Animation - Wattify Brand */
     #${containerId} .solar-calc__scanner-modal {
       display: none !important;
@@ -1305,6 +1360,33 @@
                     <input type="checkbox" id="hasBattery-${containerId}" name="hasBattery">
                     <span class="solar-calc__toggle-slider"></span>
                   </label>
+                </div>
+
+                <!-- Opciones dinámicas de capacidad de batería -->
+                <div id="batteryOptionsContainer-${containerId}" style="display: none; margin-top: 12px; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 11.5px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.02em;">
+                      Capacidad Deseada:
+                    </span>
+                    <span id="batteryCapacityLabel-${containerId}" style="font-size: 11px; color: #15803d; font-weight: 700;">
+                      5 kWh recomendada
+                    </span>
+                  </div>
+                  <div class="solar-calc__battery-chips">
+                    <button type="button" class="solar-calc__battery-chip active" data-capacity="5">
+                      <span class="solar-calc__battery-chip-title">5 kWh</span>
+                      <span class="solar-calc__battery-chip-sub">Recomendada ⭐</span>
+                    </button>
+                    <button type="button" class="solar-calc__battery-chip" data-capacity="10">
+                      <span class="solar-calc__battery-chip-title">10 kWh</span>
+                      <span class="solar-calc__battery-chip-sub">Gran Autonomía</span>
+                    </button>
+                    <button type="button" class="solar-calc__battery-chip" data-capacity="15">
+                      <span class="solar-calc__battery-chip-title">15 kWh</span>
+                      <span class="solar-calc__battery-chip-sub">Máx. Autonomía</span>
+                    </button>
+                  </div>
+                  <input type="hidden" id="selectedBatteryCapacity-${containerId}" name="batteryCapacity" value="5">
                 </div>
               </div>
 
@@ -2246,10 +2328,14 @@
     });
   }
 
-  // Battery toggle visual feedback
+  // Battery toggle visual feedback & dynamic capacity selector
   const batteryCheckbox = shadow.getElementById(`hasBattery-${containerId}`);
   const batteryCard = shadow.getElementById(`batteryCard-${containerId}`);
   const batteryBadge = shadow.getElementById(`batteryBadge-${containerId}`);
+  const batteryOptionsContainer = shadow.getElementById(`batteryOptionsContainer-${containerId}`);
+  const batteryCapacityHidden = shadow.getElementById(`selectedBatteryCapacity-${containerId}`);
+  const batteryCapacityLabel = shadow.getElementById(`batteryCapacityLabel-${containerId}`);
+
   if (batteryCheckbox && batteryCard) {
     batteryCheckbox.addEventListener('change', (e) => {
       if (e.target.checked) {
@@ -2259,6 +2345,9 @@
           batteryBadge.style.background = '#bbf7d0';
           batteryBadge.style.color = '#15803d';
         }
+        if (batteryOptionsContainer) {
+          batteryOptionsContainer.style.display = 'block';
+        }
       } else {
         batteryCard.classList.remove('active');
         if (batteryBadge) {
@@ -2266,7 +2355,28 @@
           batteryBadge.style.background = '#e2e8f0';
           batteryBadge.style.color = '#475569';
         }
+        if (batteryOptionsContainer) {
+          batteryOptionsContainer.style.display = 'none';
+        }
       }
+    });
+  }
+
+  // Chips click handler for battery capacity
+  if (batteryOptionsContainer) {
+    const chips = batteryOptionsContainer.querySelectorAll('.solar-calc__battery-chip');
+    chips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        chips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const cap = chip.getAttribute('data-capacity') || '5';
+        if (batteryCapacityHidden) {
+          batteryCapacityHidden.value = cap;
+        }
+        if (batteryCapacityLabel) {
+          batteryCapacityLabel.textContent = `${cap} kWh seleccionada`;
+        }
+      });
     });
   }
 
@@ -2315,6 +2425,7 @@
       panelApplication: panelApplicationInput ? panelApplicationInput.value : 'RESIDENCIAL',
       panelType: panelTypeInput ? panelTypeInput.value : 'NORMAL',
       hasBattery: batteryToggleInput ? batteryToggleInput.checked : false,
+      batteryCapacity: (batteryToggleInput && batteryToggleInput.checked && batteryCapacityHidden) ? parseFloat(batteryCapacityHidden.value) : undefined,
       selectedSegmentIndices: (selectedSegmentIndices && selectedSegmentIndices.length > 0)
         ? selectedSegmentIndices
         : (() => {
@@ -3528,6 +3639,7 @@
         averagePricePerKWh: averagePriceInput && averagePriceInput.value ? averagePriceInput.value : undefined,
         averagePriceCurrency: averagePriceCurrencyInput && averagePriceCurrencyInput.value ? averagePriceCurrencyInput.value : currentCountryInfo.currency,
         hasBattery: shadow.getElementById(`hasBattery-${containerId}`)?.checked ?? false,
+        batteryCapacity: (shadow.getElementById(`hasBattery-${containerId}`)?.checked && batteryCapacityHidden) ? parseFloat(batteryCapacityHidden.value) : undefined,
         selectedSegmentIndices: (() => {
           const segCbs = shadow.querySelectorAll(`.solar-calc__segment-checkbox-${containerId}`);
           if (!segCbs || segCbs.length === 0) return undefined;

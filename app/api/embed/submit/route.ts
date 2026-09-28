@@ -198,6 +198,7 @@ interface EmbedFormData {
     averagePriceCurrency?: string;
     polygonCoordinates?: string;
     hasBattery?: boolean | string;
+    batteryCapacity?: number | string;
     selectedSegmentIndices?: number[] | string;
     invoiceBase64?: string;
     invoiceFileName?: string;
@@ -979,7 +980,16 @@ export async function POST(request: Request) {
                     const systemSizeKW = bestAnalysis.installationSizeKW ?? 0;
                     let batteryConfig: BatteryConfig | null = null;
                     if (wantsBattery && systemSizeKW > 0) {
-                        batteryConfig = await calculateBatteryRequirement(systemSizeKW, 'spain', 'EUR');
+                        let dbBatteries: any[] = [];
+                        try {
+                            dbBatteries = await prisma.material.findMany({
+                                where: { type: 'BATERIA' }
+                            });
+                        } catch (bErr) {
+                            console.error('[SUBMIT] Spain - Error fetching battery materials:', bErr);
+                        }
+                        const requestedBatteryCapacity = data.batteryCapacity ? Number(data.batteryCapacity) : null;
+                        batteryConfig = await calculateBatteryRequirement(systemSizeKW, 'spain', 'EUR', requestedBatteryCapacity, dbBatteries);
                     }
 
                     const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
@@ -1005,6 +1015,11 @@ export async function POST(request: Request) {
                     googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
                     googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
                     googleSolarData.paybackYears = updatedPaybackYears ? Math.round(updatedPaybackYears) : null;
+                    googleSolarData.hasBattery = wantsBattery;
+                    googleSolarData.batteryCapacityKWh = batteryConfig ? batteryConfig.batteryCapacityKWh : null;
+                    googleSolarData.batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+                    googleSolarData.batteryTypeDescription = batteryConfig ? batteryConfig.batteryTypeDescription : null;
+                    googleSolarData.batteryUnitCount = batteryConfig ? batteryConfig.unitCount : 0;
                     (googleSolarData as any).incentivesAmount = Math.round(spanishIncentives);
                     (googleSolarData as any).netSubsidizedCost = Math.round(netSubsidizedCost);
 
@@ -1147,7 +1162,16 @@ export async function POST(request: Request) {
             const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
             let batteryConfig: BatteryConfig | null = null;
             if (wantsBattery && installationSizeKW > 0) {
-                batteryConfig = await calculateBatteryRequirement(installationSizeKW, 'spain', 'EUR');
+                let dbBatteries: any[] = [];
+                try {
+                    dbBatteries = await prisma.material.findMany({
+                        where: { type: 'BATERIA' }
+                    });
+                } catch (bErr) {
+                    console.error('[SUBMIT] Spain Fallback - Error fetching battery materials:', bErr);
+                }
+                const requestedBatteryCapacity = data.batteryCapacity ? Number(data.batteryCapacity) : null;
+                batteryConfig = await calculateBatteryRequirement(installationSizeKW, 'spain', 'EUR', requestedBatteryCapacity, dbBatteries);
             }
             const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
             const finalInstallationCost = baseInstallationCost + batteryCost;
@@ -1167,6 +1191,11 @@ export async function POST(request: Request) {
             googleSolarData.estimatedTotalLifetimeSavingsAmount = updatedLifetimeSavings;
             googleSolarData.estimatedAnnualSavingsAmount = updatedAnnualSavings;
             googleSolarData.paybackYears = updatedPaybackYears ? Math.round(updatedPaybackYears) : null;
+            googleSolarData.hasBattery = wantsBattery;
+            googleSolarData.batteryCapacityKWh = batteryConfig ? batteryConfig.batteryCapacityKWh : null;
+            googleSolarData.batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+            googleSolarData.batteryTypeDescription = batteryConfig ? batteryConfig.batteryTypeDescription : null;
+            googleSolarData.batteryUnitCount = batteryConfig ? batteryConfig.unitCount : 0;
             (googleSolarData as any).incentivesAmount = Math.round(spanishIncentives);
             (googleSolarData as any).netSubsidizedCost = Math.round(netSubsidizedCost);
 
@@ -1363,7 +1392,24 @@ export async function POST(request: Request) {
             const wantsBattery = data.hasBattery === true || data.hasBattery === 'true' || data.hasBattery === 'on';
             let batteryConfig: BatteryConfig | null = null;
             if (wantsBattery) {
-                batteryConfig = await calculateBatteryRequirement(systemSize, country, targetCurrency as any);
+                let dbBatteries: any[] = [];
+                try {
+                    dbBatteries = await prisma.material.findMany({
+                        where: { type: 'BATERIA' }
+                    });
+                } catch (bErr) {
+                    console.error('[SUBMIT] Latam - Error fetching battery materials:', bErr);
+                }
+                const requestedBatteryCapacity = data.batteryCapacity ? Number(data.batteryCapacity) : null;
+                batteryConfig = await calculateBatteryRequirement(systemSize, country, targetCurrency as any, requestedBatteryCapacity, dbBatteries);
+            }
+
+            if (pvgisData) {
+                (pvgisData as any).hasBattery = wantsBattery;
+                (pvgisData as any).batteryCapacityKWh = batteryConfig ? batteryConfig.batteryCapacityKWh : null;
+                (pvgisData as any).batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;
+                (pvgisData as any).batteryTypeDescription = batteryConfig ? batteryConfig.batteryTypeDescription : null;
+                (pvgisData as any).batteryUnitCount = batteryConfig ? batteryConfig.unitCount : 0;
             }
 
             const batteryCost = batteryConfig ? batteryConfig.batteryCost : 0;

@@ -42,6 +42,7 @@ model Material {
   panelApplication PanelApplication?
   panelType        PanelType?
   peakPower        Float?
+  price            Float?            @default(0)
   type             MaterialType      @default(OTHER)
 }
 
@@ -113,6 +114,7 @@ enum Role {
 enum MaterialType {
   PANEL
   INVERSOR
+  BATERIA
   OTHER
 }
 

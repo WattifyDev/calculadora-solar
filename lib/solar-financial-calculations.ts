@@ -152,41 +152,83 @@ export interface BatteryConfig {
     unitCount: number;
 }
 
+export interface DbBatteryMaterial {
+    id: string;
+    name: string;
+    peakPower: number | null; // Capacidad útil en kWh
+    price: number | null;     // Precio en EUR
+}
+
 /**
  * Calculates battery specification and pricing based on:
- * - Systems <= 25 kWp: 5 kWh modules @ 2850 EUR each
- * - Systems > 25 kWp: 50 kWh cabinets @ 12000 EUR each
+ * - Systems <= 25 kWp or user requested capacity (5, 10, 15 kWh)
+ * - Queries database Material table for configured battery prices
+ * - Falls back to standard modular 5 kWh packs @ 2850 EUR
  */
 export async function calculateBatteryRequirement(
     systemSizeKW: number,
     country: 'spain' | 'colombia' | 'guatemala',
-    currency: 'EUR' | 'COP' | 'GTQ' = 'EUR'
+    currency: 'EUR' | 'COP' | 'GTQ' = 'EUR',
+    requestedCapacityKWh?: number | null,
+    dbBatteries?: DbBatteryMaterial[]
 ): Promise<BatteryConfig> {
     let unitCount = 1;
     let batteryCapacityKWh = 5;
     let baseCostEur = 2850;
     let batteryTypeDescription = '';
 
-    if (systemSizeKW <= 25) {
-        // Modular 5 kWh packs @ 2850 EUR
-        if (systemSizeKW <= 4) {
-            unitCount = 1; // 5 kWh
-        } else if (systemSizeKW <= 10) {
-            unitCount = 2; // 10 kWh
-        } else if (systemSizeKW <= 18) {
-            unitCount = 3; // 15 kWh
+    // Si hay una batería en la base de datos con precio válido, tomar su precio unitario
+    const validBatteries = (dbBatteries || []).filter(b => (b.price ?? 0) > 0 && (b.peakPower ?? 0) > 0);
+    validBatteries.sort((a, b) => (a.peakPower || 0) - (b.peakPower || 0));
+
+    // Determinar capacidad requerida
+    if (requestedCapacityKWh && requestedCapacityKWh > 0) {
+        batteryCapacityKWh = requestedCapacityKWh;
+        
+        // Comprobar si existe una batería exacta en DB
+        const exactMatch = validBatteries.find(b => b.peakPower === requestedCapacityKWh);
+        if (exactMatch && exactMatch.price) {
+            unitCount = 1;
+            baseCostEur = exactMatch.price;
+            batteryTypeDescription = `${exactMatch.name} (${batteryCapacityKWh} kWh útiles)`;
         } else {
-            unitCount = 4; // 20 kWh
+            // Si es múltiplo de la batería base modular (ej: 5 kWh)
+            const baseBattery = validBatteries[0];
+            const baseCap = baseBattery?.peakPower || 5;
+            const basePrice = baseBattery?.price || 2850;
+            unitCount = Math.max(1, Math.round(requestedCapacityKWh / baseCap));
+            baseCostEur = unitCount * basePrice;
+            const modelName = baseBattery ? baseBattery.name : 'Batería modular Litio';
+            batteryTypeDescription = `${unitCount} x ${modelName} (${batteryCapacityKWh} kWh totales)`;
         }
-        batteryCapacityKWh = unitCount * 5;
-        baseCostEur = unitCount * 2850;
-        batteryTypeDescription = `${unitCount} x Batería modular Litio 5 kWh (${batteryCapacityKWh} kWh totales)`;
     } else {
-        // Commercial / Industrial Cabinets of 50 kWh @ 12000 EUR
-        unitCount = Math.max(1, Math.ceil(systemSizeKW / 50));
-        batteryCapacityKWh = unitCount * 50;
-        baseCostEur = unitCount * 12000;
-        batteryTypeDescription = `${unitCount} x Cabinet Industrial 50 kWh (${batteryCapacityKWh} kWh totales)`;
+        // Cálculo automático por potencia pico si no se especifica capacidad explícita
+        if (systemSizeKW <= 25) {
+            if (systemSizeKW <= 4) {
+                unitCount = 1; // 5 kWh
+            } else if (systemSizeKW <= 10) {
+                unitCount = 2; // 10 kWh
+            } else if (systemSizeKW <= 18) {
+                unitCount = 3; // 15 kWh
+            } else {
+                unitCount = 4; // 20 kWh
+            }
+            const baseBattery = validBatteries[0];
+            const baseCap = baseBattery?.peakPower || 5;
+            const basePrice = baseBattery?.price || 2850;
+            batteryCapacityKWh = unitCount * baseCap;
+            baseCostEur = unitCount * basePrice;
+            const modelName = baseBattery ? baseBattery.name : 'Batería modular Litio 5 kWh';
+            batteryTypeDescription = `${unitCount} x ${modelName} (${batteryCapacityKWh} kWh totales)`;
+        } else {
+            // Instalaciones grandes / industriales
+            unitCount = Math.max(1, Math.ceil(systemSizeKW / 50));
+            batteryCapacityKWh = unitCount * 50;
+            const industrialBattery = validBatteries.find(b => (b.peakPower ?? 0) >= 40);
+            const indPrice = industrialBattery?.price || 12000;
+            baseCostEur = unitCount * indPrice;
+            batteryTypeDescription = `${unitCount} x ${industrialBattery ? industrialBattery.name : 'Cabinet Industrial 50 kWh'} (${batteryCapacityKWh} kWh totales)`;
+        }
     }
 
     let finalCost = baseCostEur;

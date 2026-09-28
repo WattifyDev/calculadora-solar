@@ -57,12 +57,15 @@ export function MaterialForm() {
             const peakPowerValue = formData.get('peakPower') ? parseFloat(formData.get('peakPower') as string) : null
             if (
                 (currentMaterialType === MaterialType.INVERSOR && (peakPowerValue === null || isNaN(peakPowerValue) || peakPowerValue <= 0)) ||
-                (currentMaterialType === MaterialType.PANEL && (peakPowerValue === null || isNaN(peakPowerValue) || peakPowerValue <= 0))
+                (currentMaterialType === MaterialType.PANEL && (peakPowerValue === null || isNaN(peakPowerValue) || peakPowerValue <= 0)) ||
+                (currentMaterialType === MaterialType.BATERIA && (peakPowerValue === null || isNaN(peakPowerValue) || peakPowerValue <= 0))
             ) {
-                setImageError('La potencia pico debe ser un número mayor a 0 para paneles e inversores.')
+                setImageError('La potencia pico o capacidad debe ser un número mayor a 0.')
                 setIsSubmitting(false)
                 return;
             }
+
+            const priceValue = formData.get('price') ? parseFloat(formData.get('price') as string) : 0
 
             const materialData: MaterialFormData = {
                 name: formData.get('name') as string,
@@ -71,7 +74,8 @@ export function MaterialForm() {
                 panelType: formData.get('type') === MaterialType.PANEL ? formData.get('panelType') as PanelType : null,
                 panelApplication: formData.get('type') === MaterialType.PANEL ? formData.get('panelApplication') as PanelApplication : null,
                 peakPower: peakPowerValue,
-                hasBattery: formData.get('type') === MaterialType.INVERSOR ? formData.get('hasBattery') === 'on' : null,
+                price: priceValue,
+                hasBattery: formData.get('type') === MaterialType.BATERIA ? true : (formData.get('type') === MaterialType.INVERSOR ? formData.get('hasBattery') === 'on' : null),
                 image: null,
                 datasheetPdf: null
             }
@@ -167,6 +171,8 @@ export function MaterialForm() {
                 return <Sun className="w-4 h-4" />
             case MaterialType.INVERSOR:
                 return <Zap className="w-4 h-4" />
+            case MaterialType.BATERIA:
+                return <span className="text-base leading-none">🔋</span>
             default:
                 return <Settings className="w-4 h-4" />
         }
@@ -240,6 +246,12 @@ export function MaterialForm() {
                                                     Inversor
                                                 </div>
                                             </SelectItem>
+                                            <SelectItem value={MaterialType.BATERIA} className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base leading-none">🔋</span>
+                                                    Batería de Almacenamiento
+                                                </div>
+                                            </SelectItem>
                                             <SelectItem value={MaterialType.OTHER} className="flex items-center gap-2">
                                                 <div className="flex items-center gap-2">
                                                     <Settings className="w-4 h-4" />
@@ -261,7 +273,8 @@ export function MaterialForm() {
                                     Especificaciones
                                     <Badge variant="secondary" className="ml-2">
                                         {currentMaterialType === MaterialType.PANEL ? 'Panel Solar' :
-                                            currentMaterialType === MaterialType.INVERSOR ? 'Inversor' : 'Otro'}
+                                            currentMaterialType === MaterialType.INVERSOR ? 'Inversor' :
+                                            currentMaterialType === MaterialType.BATERIA ? 'Batería' : 'Otro'}
                                     </Badge>
                                 </div>
 
@@ -367,6 +380,51 @@ export function MaterialForm() {
                                                 Potencia máxima del inversor en kilovatios
                                             </p>
                                         </div>
+                                    )}
+
+                                    {/* Battery-specific fields */}
+                                    {currentMaterialType === MaterialType.BATERIA && (
+                                        <>
+                                            <div className="space-y-3">
+                                                <Label htmlFor="peakPowerBattery" className="text-sm font-medium text-foreground flex items-center gap-2">
+                                                    Capacidad Útil (kWh)
+                                                    <span className="text-destructive">*</span>
+                                                </Label>
+                                                <Input
+                                                    id="peakPowerBattery"
+                                                    name="peakPower"
+                                                    type="number"
+                                                    step="0.5"
+                                                    min="0.5"
+                                                    required
+                                                    placeholder="Ej: 5"
+                                                    className="h-11 bg-background/50 border-border/50 focus:border-primary/60 focus:ring-primary/20 font-mono transition-all duration-200"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Capacidad útil de almacenamiento por unidad (kWh)
+                                                </p>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <Label htmlFor="batteryPrice" className="text-sm font-medium text-foreground flex items-center gap-2">
+                                                    Precio de Venta (€)
+                                                    <span className="text-destructive">*</span>
+                                                </Label>
+                                                <Input
+                                                    id="batteryPrice"
+                                                    name="price"
+                                                    type="number"
+                                                    step="10"
+                                                    min="0"
+                                                    required
+                                                    placeholder="Ej: 2850"
+                                                    className="h-11 bg-background/50 border-border/50 focus:border-primary/60 focus:ring-primary/20 font-mono transition-all duration-200"
+                                                />
+                                                <p className="text-xs text-muted-foreground">
+                                                    Precio de venta al cliente con instalación e integración (EUR)
+                                                </p>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             </div>
