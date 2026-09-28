@@ -786,22 +786,27 @@
     #${containerId} .solar-calc__scanner-modal {
       display: none !important;
       position: absolute !important;
-      top: 4% !important;
-      bottom: 4% !important;
-      left: 5% !important;
-      right: 5% !important;
-      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.98) 0%, rgba(240, 253, 244, 0.96) 100%) !important;
-      backdrop-filter: blur(10px) !important;
+      top: 3% !important;
+      bottom: 3% !important;
+      left: 0 !important;
+      right: 0 !important;
+      max-width: 520px !important;
+      margin: 0 auto !important;
+      width: 92% !important;
+      background: radial-gradient(circle at top center, rgba(255, 255, 255, 0.99) 0%, rgba(240, 253, 244, 0.96) 100%) !important;
+      backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(6, 50, 49, 0.08) !important;
       border-radius: 20px !important;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25) !important;
+      box-shadow: 0 25px 60px -15px rgba(6, 50, 49, 0.28) !important;
       z-index: 50 !important;
       flex-direction: column !important;
       align-items: center !important;
       justify-content: flex-start !important;
-      padding: 24px 20px !important;
+      padding: 26px 22px !important;
       text-align: center !important;
-      max-height: 92vh !important;
+      max-height: 94vh !important;
       overflow-y: auto !important;
+      box-sizing: border-box !important;
     }
 
     #${containerId} .solar-calc__scanner-modal.visible {
@@ -810,9 +815,9 @@
 
     #${containerId} .solar-calc__radar-box {
       position: relative !important;
-      width: 110px !important;
-      height: 110px !important;
-      margin-bottom: 24px !important;
+      width: 90px !important;
+      height: 90px !important;
+      margin-bottom: 16px !important;
     }
 
     #${containerId} .solar-calc__radar-circle {
@@ -898,32 +903,32 @@
       gap: 6px !important;
       background: #063231 !important;
       color: #CBFF54 !important;
-      font-size: 12px !important;
+      font-size: 11px !important;
       font-weight: 800 !important;
       letter-spacing: 0.08em !important;
       text-transform: uppercase !important;
-      padding: 6px 16px !important;
+      padding: 5px 14px !important;
       border-radius: 999px !important;
-      margin-bottom: 16px !important;
+      margin-bottom: 14px !important;
     }
 
     #${containerId} .solar-calc__scanner-status-text {
       font-family: 'Inter', sans-serif !important;
-      font-size: 23px !important;
+      font-size: 21px !important;
       font-weight: 800 !important;
       color: #063231 !important;
-      margin: 4px 0 8px !important;
+      margin: 2px 0 6px !important;
       letter-spacing: -0.02em !important;
-      max-width: 520px !important;
-      line-height: 1.35 !important;
+      max-width: 480px !important;
+      line-height: 1.3 !important;
     }
 
     #${containerId} .solar-calc__scanner-sub-text {
-      font-size: 16px !important;
-      font-weight: 600 !important;
+      font-size: 13.5px !important;
+      font-weight: 500 !important;
       color: #047857 !important;
-      margin-bottom: 24px !important;
-      max-width: 480px !important;
+      margin-bottom: 18px !important;
+      max-width: 460px !important;
       line-height: 1.45 !important;
     }
 
@@ -1602,11 +1607,8 @@
               <div class="solar-calc__scanner-progress" id="submissionModalProgressBox-${containerId}">
                 <div class="solar-calc__scanner-bar" id="submissionModalProgressBar-${containerId}"></div>
               </div>
-              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 16px; width: 100%; max-width: 440px;">
-                <div id="submissionModalConfirmMsg-${containerId}" style="margin-bottom: 14px;"></div>
-                <button type="button" id="submissionModalCloseBtn-${containerId}" class="solar-calc__button" style="width: 100%; font-weight: 600; font-size: 13px; background: #f8fafc; color: #475569; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s ease;">
-                  Finalizar y Volver al Sitio
-                </button>
+              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 14px; width: 100%; max-width: 480px;">
+                <div id="submissionModalConfirmMsg-${containerId}"></div>
               </div>
             </div>
           </div>
@@ -3499,8 +3501,10 @@
       const customerName = data.name || '';
 
       setTimeout(() => {
-        if (modalTitle) modalTitle.textContent = `¡Estudio preparado con éxito, ${customerName}!`;
-        if (modalSub) modalSub.textContent = 'Hemos enviado tu propuesta técnica personalizada a tu correo';
+        if (modalTitle) modalTitle.textContent = `¡Estudio preparado con éxito${customerName ? ', ' + customerName : ''}!`;
+        if (modalSub) {
+          modalSub.innerHTML = `Hemos enviado tu propuesta técnica personalizada a <span style="font-weight: 700; color: #063231;">${data.email || 'tu correo'}</span>`;
+        }
         if (modalIcon) modalIcon.textContent = '📩';
         if (modalProgressBox) modalProgressBox.style.display = 'none';
 
@@ -3531,37 +3535,44 @@
           const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
 
           modalConfirmMsg.innerHTML = `
-            <div style="background: #ffffff; padding: 14px 16px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 13px; color: #334155; line-height: 1.5; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-              <div style="display: flex; align-items: flex-start; gap: 10px;">
-                <span style="font-size: 18px; line-height: 1;">✉️</span>
-                <div>
-                  En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.<br>
-                  <span style="font-size: 11.5px; color: #64748b; margin-top: 4px; display: inline-block;">Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</span>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top: 14px; padding: 18px 20px; background: #063231; border: 1.5px solid rgba(203, 255, 84, 0.25); border-radius: 14px; text-align: left; color: #ffffff; box-shadow: 0 10px 25px -5px rgba(6, 50, 49, 0.25);">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #CBFF54; color: #063231; padding: 3px 9px; border-radius: 100px;">
+            <!-- 1. Tarjeta Principal: Agendar con un Ingeniero -->
+            <div style="width: 100%; padding: 18px 20px; background: #063231; border: 1.5px solid rgba(203, 255, 84, 0.35); border-radius: 16px; text-align: left; color: #ffffff; box-shadow: 0 12px 28px -6px rgba(6, 50, 49, 0.3); box-sizing: border-box; margin-bottom: 16px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #CBFF54; color: #063231; padding: 4px 10px; border-radius: 100px;">
                   <span>⚡</span> Paso Recomendado
                 </span>
-                <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">15 min · Videollamada Google Meet</span>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                  <span>⏱️</span> 15 min · Videollamada Google Meet
+                </span>
               </div>
-              <h4 style="font-size: 15px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif; letter-spacing: -0.01em;">
-                ¿Quieres revisar tu estudio con un ingeniero?
+              <h4 style="font-size: 15.5px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif; letter-spacing: -0.01em; line-height: 1.35;">
+                ¿Quieres revisar tu estudio con un ingeniero especialista?
               </h4>
-              <p style="font-size: 12px; line-height: 1.5; color: #cbd5e1; margin-bottom: 16px;">
+              <p style="font-size: 12px; line-height: 1.5; color: #cbd5e1; margin: 0 0 16px 0;">
                 Analizaremos tu cubierta en detalle, la compensación de excedentes y las deducciones fiscales aplicables a tu caso sin compromiso.
               </p>
-              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13.5px; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(203, 255, 84, 0.35); text-align: center; box-sizing: border-box;">
+              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; background: #CBFF54; color: #063231; border-radius: 11px; font-weight: 800; font-size: 13.5px; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
                 <span>📅</span> <span>Agendar videollamada con un ingeniero</span>
               </button>
             </div>
+
+            <!-- 2. Aviso de PDF y SPAM: Compacto, centrado y discreto justo debajo -->
+            <div style="margin: 0 auto 18px auto; max-width: 440px; text-align: center; font-size: 11.5px; color: #64748b; line-height: 1.55;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 2px; font-weight: 600; color: #334155;">
+                <span>✉️</span>
+                <span>En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.</span>
+              </div>
+              <div>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</div>
+            </div>
+
+            <!-- 3. Botón Secundario de Salida: Sutil, no invasivo -->
+            <button type="button" id="submissionModalCloseBtn-${containerId}" style="width: 100%; max-width: 260px; margin: 0 auto; display: block; font-weight: 600; font-size: 12.5px; background: #ffffff; color: #64748b; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 16px; cursor: pointer; transition: all 0.2s ease;">
+              Finalizar y Volver al Sitio
+            </button>
           `;
           modalConfirmBox.style.display = 'block';
 
-          // Direct click listener in Shadow DOM for Pop-up Modal execution
+          // Listener botón Agendar (Popup Cal.com)
           const calPopupBtn = modalConfirmMsg.querySelector('.solar-calc__cal-popup-btn');
           if (calPopupBtn) {
             calPopupBtn.addEventListener('click', (e) => {
@@ -3570,12 +3581,14 @@
               openCalModal(calBookingUrl);
             });
           }
-        }
 
-        if (modalCloseBtn) {
-          modalCloseBtn.addEventListener('click', () => {
-            window.location.href = window.location.origin;
-          });
+          // Listener botón Finalizar y Volver
+          const closeBtn = modalConfirmMsg.querySelector(`#submissionModalCloseBtn-${containerId}`);
+          if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+              window.location.href = window.location.origin;
+            });
+          }
         }
       }, 700);
 
