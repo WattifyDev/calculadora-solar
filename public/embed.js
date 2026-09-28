@@ -1607,7 +1607,7 @@
               <div class="solar-calc__scanner-progress" id="submissionModalProgressBox-${containerId}">
                 <div class="solar-calc__scanner-bar" id="submissionModalProgressBar-${containerId}"></div>
               </div>
-              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 14px; width: 100%; max-width: 480px;">
+              <div id="submissionModalConfirmBox-${containerId}" style="display: none; margin-top: 22px; width: 100%; max-width: 480px;">
                 <div id="submissionModalConfirmMsg-${containerId}"></div>
               </div>
             </div>
@@ -3535,38 +3535,35 @@
           const calBookingUrl = `${calBaseUrl}?${calParams.toString()}`;
 
           modalConfirmMsg.innerHTML = `
-            <!-- 1. Tarjeta Principal: Agendar con un Ingeniero -->
-            <div style="width: 100%; padding: 18px 20px; background: #063231; border: 1.5px solid rgba(203, 255, 84, 0.35); border-radius: 16px; text-align: left; color: #ffffff; box-shadow: 0 12px 28px -6px rgba(6, 50, 49, 0.3); box-sizing: border-box; margin-bottom: 16px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                <span style="display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #CBFF54; color: #063231; padding: 4px 10px; border-radius: 100px;">
-                  <span>⚡</span> Paso Recomendado
-                </span>
-                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                  <span>⏱️</span> 15 min · Videollamada Google Meet
-                </span>
+            <!-- 1. Tarjeta Cal.com: Diseño idéntico a resultados -->
+            <div style="position: relative; overflow: hidden; width: 100%; padding: 24px 22px; background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #022c22 100%); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 18px; text-align: left; color: #ffffff; box-shadow: 0 16px 36px -8px rgba(2, 44, 34, 0.45); box-sizing: border-box; margin-bottom: 24px;">
+              <div style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: #CBFF54; color: #063231; font-size: 11px; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 12px;">
+                <span>⚡</span> Paso Siguiente Recomendado
               </div>
-              <h4 style="font-size: 15.5px; font-weight: 800; margin: 0 0 6px 0; color: #ffffff; font-family: 'Inter', sans-serif; letter-spacing: -0.01em; line-height: 1.35;">
-                ¿Quieres revisar tu estudio con un ingeniero especialista?
-              </h4>
-              <p style="font-size: 12px; line-height: 1.5; color: #cbd5e1; margin: 0 0 16px 0;">
-                Analizaremos tu cubierta en detalle, la compensación de excedentes y las deducciones fiscales aplicables a tu caso sin compromiso.
+              <h3 style="font-size: 17.5px; font-weight: 800; margin: 0 0 8px 0; color: #ffffff; font-family: 'Inter', sans-serif; letter-spacing: -0.01em; line-height: 1.35;">
+                ¿Revisamos tu estudio con un ingeniero especialista?
+              </h3>
+              <p style="font-size: 12.5px; line-height: 1.55; color: #cbd5e1; margin: 0 0 18px 0;">
+                Agenda una sesión técnica online de 15 minutos. Validaremos la orientación de tu cubierta, optimizaremos el dimensionado y te asesoraremos sobre la deducción fiscal del IRPF y bonificación del IBI.
               </p>
-              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; background: #CBFF54; color: #063231; border-radius: 11px; font-weight: 800; font-size: 13.5px; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(203, 255, 84, 0.4); text-align: center; box-sizing: border-box;">
+              <button type="button" class="solar-calc__cal-popup-btn" style="cursor: pointer; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 18px; background: #CBFF54; color: #063231; border-radius: 10px; font-weight: 800; font-size: 13.5px; text-decoration: none; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(203, 255, 84, 0.35); text-align: center; box-sizing: border-box;">
                 <span>📅</span> <span>Agendar videollamada con un ingeniero</span>
               </button>
             </div>
 
-            <!-- 2. Aviso de PDF y SPAM: Compacto, centrado y discreto justo debajo -->
-            <div style="margin: 0 auto 18px auto; max-width: 440px; text-align: center; font-size: 11.5px; color: #64748b; line-height: 1.55;">
-              <div style="display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 2px; font-weight: 600; color: #334155;">
+            <!-- 2. Aviso de PDF y SPAM: Separado con caja sutil y espaciada -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; text-align: center; margin-bottom: 24px; box-sizing: border-box;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px; font-weight: 700; font-size: 12.5px; color: #1e293b;">
                 <span>✉️</span>
                 <span>En breve recibirás el informe detallado en formato PDF remitido desde <strong>Informe Solar</strong>.</span>
               </div>
-              <div>Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).</div>
+              <div style="font-size: 11.5px; color: #64748b; line-height: 1.5;">
+                Si en unos minutos no lo ves en tu bandeja de entrada, revisa tu carpeta de correo no deseado (SPAM).
+              </div>
             </div>
 
-            <!-- 3. Botón Secundario de Salida: Sutil, no invasivo -->
-            <button type="button" id="submissionModalCloseBtn-${containerId}" style="width: 100%; max-width: 260px; margin: 0 auto; display: block; font-weight: 600; font-size: 12.5px; background: #ffffff; color: #64748b; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 16px; cursor: pointer; transition: all 0.2s ease;">
+            <!-- 3. Botón de Finalizar: Restaurado el verde original a ancho completo -->
+            <button type="button" id="submissionModalCloseBtn-${containerId}" class="solar-calc__button solar-calc__button--primary" style="width: 100%; padding: 13px 20px; font-weight: 700; font-size: 14px; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3);">
               Finalizar y Volver al Sitio
             </button>
           `;
