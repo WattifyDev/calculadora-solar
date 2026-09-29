@@ -139,6 +139,7 @@ model Submission {
   totalCostWithIva             Float?
   orthophotoBase64             String?
   orthophotoUrl                String?
+  gclid                        String?
 }
 
 model SystemSetting {

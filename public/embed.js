@@ -3457,6 +3457,21 @@
         referrer: document.referrer || null
       };
 
+      // --- GCLID Capture (Google Ads Attribution) ---
+      // Priority: URL param > localStorage (persisted from landing)
+      const urlParams = new URLSearchParams(window.location.search);
+      const gclidFromUrl = urlParams.get('gclid');
+      if (gclidFromUrl) {
+        // Always refresh localStorage with the freshest gclid
+        try { localStorage.setItem('wattify_gclid', gclidFromUrl); } catch(_) {}
+      }
+      let gclid = gclidFromUrl;
+      if (!gclid) {
+        try { gclid = localStorage.getItem('wattify_gclid') || undefined; } catch(_) { gclid = undefined; }
+      }
+      if (gclid) data.gclid = gclid;
+      // --- END GCLID ---
+
       const submissionModal = shadow.querySelector(`#submissionModal-${containerId}`);
       const modalTitle = shadow.querySelector(`#submissionModalTitle-${containerId}`);
       const modalSub = shadow.querySelector(`#submissionModalSub-${containerId}`);

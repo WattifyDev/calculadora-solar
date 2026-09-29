@@ -103,7 +103,8 @@ async function dispatchCalculadoraToN8n(submission: any, country?: string, invoi
             treesPlanted: treesPlanted,
             orthophotoUrl: submission.orthophotoUrl,
             pdfUrl: pdfUrl,
-            googleSolarData: gsd
+            googleSolarData: gsd,
+            gclid: submission.gclid || null
         };
 
         fetch(n8nWebhookUrl, {
@@ -205,6 +206,7 @@ interface EmbedFormData {
     selectedSegmentIndices?: number[] | string;
     invoiceBase64?: string;
     invoiceFileName?: string;
+    gclid?: string;
 }
 
 // New type for cost breakdown (mirror from calculate route)
@@ -1580,6 +1582,7 @@ export async function POST(request: Request) {
                         selectedInverterPeakPower: selectedInverterPeakPowerCountry,
                         orthophotoUrl: orthophotoUrl,
                         orthophotoBase64: orthophotoBase64,
+                        gclid: data.gclid || null,
                     } as any,
                 });
 
